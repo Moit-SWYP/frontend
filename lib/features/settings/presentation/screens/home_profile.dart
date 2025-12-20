@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:moit/core/constants/app_colors.dart';
 import 'package:moit/core/constants/app_text_styles.dart';
 import 'package:moit/features/settings/presentation/widgets/settings_section.dart';
@@ -53,8 +54,7 @@ class SettingsScreen extends StatelessWidget {
                   SettingsMenuItem(
                     title: '내 정보',
                     onTap: () {
-                      // TODO: 내 정보 화면으로 이동
-                      debugPrint('내 정보 클릭');
+                      context.push('/profile/my');
                     },
                   ),
                   const SizedBox(height: 12),

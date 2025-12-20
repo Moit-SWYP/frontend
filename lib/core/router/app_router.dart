@@ -2,6 +2,8 @@ import 'package:go_router/go_router.dart';
 import 'package:moit/features/auth/presentation/screens/login_screen.dart';
 import 'package:moit/features/auth/presentation/screens/signup_detail_screen.dart';
 import 'package:moit/features/settings/presentation/screens/home_profile.dart';
+import 'package:moit/features/settings/presentation/screens/home_profile_my.dart';
+import 'package:moit/features/settings/presentation/screens/home_profile_my_account.dart';
 
 /// 앱 전체 라우팅 설정
 class AppRouter {
@@ -27,6 +29,20 @@ class AppRouter {
         path: '/settings',
         name: 'settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+
+      // 내 정보 화면
+      GoRoute(
+        path: '/profile/my',
+        name: 'profile-my',
+        builder: (context, state) => const MyProfileScreen(),
+      ),
+
+      // 회원탈퇴 화면
+      GoRoute(
+        path: '/profile/my/withdraw',
+        name: 'profile-withdraw',
+        builder: (context, state) => const WithdrawAccountScreen(),
       ),
 
       // TODO: 다른 화면들 추가

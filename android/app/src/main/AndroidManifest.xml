@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 인터넷 권한 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:label="moit"
         android:name="${applicationName}"
@@ -30,6 +33,11 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- 카카오 Native App Key -->
+        <meta-data
+            android:name="com.kakao.sdk.AppKey"
+            android:value="5f85d667c593c86d5bc8372844f15800" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
@@ -41,5 +49,7 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- 카카오톡 앱 확인을 위한 쿼리 -->
+        <package android:name="com.kakao.talk" />
     </queries>
 </manifest>

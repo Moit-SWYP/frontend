@@ -48,6 +48,12 @@ dependencies:
   # Form & Validation
   intl: ^0.19.0
 
+  # HTTP Client
+  http: ^1.2.0
+
+  # Kakao Login SDK
+  kakao_flutter_sdk_user: 1.9.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
