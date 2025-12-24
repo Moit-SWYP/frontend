@@ -4,6 +4,9 @@ import 'package:moit/features/auth/presentation/screens/signup_detail_screen.dar
 import 'package:moit/features/settings/presentation/screens/home_profile.dart';
 import 'package:moit/features/settings/presentation/screens/home_profile_my.dart';
 import 'package:moit/features/settings/presentation/screens/home_profile_my_account.dart';
+import 'package:moit/features/settings/presentation/screens/terms_of_service_screen.dart';
+import 'package:moit/features/settings/presentation/screens/privacy_policy_screen.dart';
+import 'package:moit/features/settings/presentation/screens/notification_settings_screen.dart';
 
 /// 앱 전체 라우팅 설정
 class AppRouter {
@@ -43,6 +46,27 @@ class AppRouter {
         path: '/profile/my/withdraw',
         name: 'profile-withdraw',
         builder: (context, state) => const WithdrawAccountScreen(),
+      ),
+
+      // 서비스 이용 약관 화면
+      GoRoute(
+        path: '/settings/terms',
+        name: 'terms',
+        builder: (context, state) => const TermsOfServiceScreen(),
+      ),
+
+      // 개인정보 처리 방침 화면
+      GoRoute(
+        path: '/settings/privacy',
+        name: 'privacy',
+        builder: (context, state) => const PrivacyPolicyScreen(),
+      ),
+
+      // 알림 설정 화면
+      GoRoute(
+        path: '/settings/notifications',
+        name: 'notifications',
+        builder: (context, state) => const NotificationSettingsScreen(),
       ),
 
       // TODO: 다른 화면들 추가

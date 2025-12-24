@@ -46,9 +46,15 @@ class MyProfileScreen extends StatelessWidget {
             children: [
               const SizedBox(height: 16),
 
-              // 프로필 아바타
+              // 프로필 아바타 + Chip
               Center(
-                child: _buildProfileAvatar(),
+                child: Column(
+                  children: [
+                    _buildProfileAvatar(),
+                    const SizedBox(height: 12),
+                    _buildProfileChip(),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 16),
@@ -81,8 +87,8 @@ class MyProfileScreen extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // 로그인 버튼
-              _buildLoginButton(),
+              // 로그아웃 버튼
+              _buildLoginButton(context),
 
               const SizedBox(height: 16),
 
@@ -189,6 +195,73 @@ class MyProfileScreen extends StatelessWidget {
     );
   }
 
+  /// 프로필 Chip (닉네임 · 선호도)
+  Widget _buildProfileChip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFE8EDFE), // main010
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // 닉네임
+          const Text(
+            '미식이',
+            style: TextStyle(
+              color: Color(0xFF1A49F1), // main050
+              fontSize: 14,
+              fontFamily: 'Pretendard',
+              fontWeight: FontWeight.w700,
+              height: 1.43,
+            ),
+          ),
+          const SizedBox(width: 4),
+          // 구분점
+          Container(
+            width: 3,
+            height: 3,
+            decoration: ShapeDecoration(
+              color: const Color(0xFF1A49F1), // main050
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          // 선호도
+          const Text(
+            '맛집 선호',
+            style: TextStyle(
+              color: Color(0xFF1A49F1), // main050
+              fontSize: 13,
+              fontFamily: 'Pretendard',
+              fontWeight: FontWeight.w500,
+              height: 1.50,
+              letterSpacing: -0.33,
+            ),
+          ),
+          const SizedBox(width: 4),
+          // 편집 아이콘
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: SvgPicture.asset(
+              'assets/icons/edit_pencil.svg',
+              width: 20,
+              height: 20,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// SNS 아이콘
   Widget _buildSNSIcons() {
     return Row(
@@ -230,27 +303,25 @@ class MyProfileScreen extends StatelessWidget {
     );
   }
 
-  /// 로그인 버튼
-  Widget _buildLoginButton() {
+  /// 로그아웃 버튼
+  Widget _buildLoginButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
         onPressed: () async {
           try {
-            // 카카오 로그인
-            final userInfo = await KakaoLoginService.login();
+            // 카카오 SDK 로그아웃
+            await KakaoLoginService.logout();
 
-            debugPrint('카카오 로그인 성공!');
-            debugPrint('소셜 ID: ${userInfo['socialId']}');
-            debugPrint('이메일: ${userInfo['email']}');
-            debugPrint('닉네임: ${userInfo['nickname']}');
+            debugPrint('로그아웃 성공');
 
-            // TODO: 백엔드로 사용자 정보 전송
-            // AuthService.signup() 또는 AuthService.login() 호출
-
+            // 로그인 화면으로 완전 이동 (뒤로가기 방지)
+            if (context.mounted) {
+              context.go('/login');
+            }
           } catch (e) {
-            debugPrint('카카오 로그인 실패: $e');
+            debugPrint('로그아웃 실패: $e');
             // TODO: 사용자에게 에러 메시지 표시
           }
         },
@@ -263,7 +334,7 @@ class MyProfileScreen extends StatelessWidget {
           elevation: 0,
         ),
         child: Text(
-          '카카오 로그인',
+          '로그아웃',
           style: AppTextStyles.button.copyWith(
             color: Colors.white,
             fontSize: 16,

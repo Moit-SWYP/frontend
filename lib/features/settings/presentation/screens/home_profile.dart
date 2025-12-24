@@ -61,8 +61,7 @@ class SettingsScreen extends StatelessWidget {
                   SettingsMenuItem(
                     title: '알림',
                     onTap: () {
-                      // TODO: 알림 설정 화면으로 이동
-                      debugPrint('알림 클릭');
+                      context.push('/settings/notifications');
                     },
                   ),
                 ],
@@ -75,18 +74,16 @@ class SettingsScreen extends StatelessWidget {
                 title: '약관 정보 및 기타',
                 children: [
                   SettingsMenuItem(
-                    title: '약관 및 개인정보 처리 동의',
+                    title: '서비스 이용 약관',
                     onTap: () {
-                      // TODO: 약관 화면으로 이동
-                      debugPrint('약관 및 개인정보 처리 동의 클릭');
+                      context.push('/settings/terms');
                     },
                   ),
                   const SizedBox(height: 12),
                   SettingsMenuItem(
                     title: '개인정보 처리 방침',
                     onTap: () {
-                      // TODO: 개인정보 처리 방침 화면으로 이동
-                      debugPrint('개인정보 처리 방침 클릭');
+                      context.push('/settings/privacy');
                     },
                   ),
                 ],

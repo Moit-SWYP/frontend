@@ -59,93 +59,100 @@ class _WithdrawAccountScreenState extends State<WithdrawAccountScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // TODO: 캐릭터 이미지 추가 필요
-              // Image.asset('assets/images/character_orange.png', height: 120),
+              // 캐릭터 이미지
               Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade100,
-                  borderRadius: BorderRadius.circular(60),
+                width: 100,
+                height: 100,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.sentiment_dissatisfied,
-                  size: 60,
-                  color: Colors.orange,
+                child: Center(
+                  child: SvgPicture.asset(
+                    'assets/icons/group_misik.svg',
+                    width: 72.9,
+                    height: 75.4,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
               const Text(
                 '정말 탈퇴하실 건가요?',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
+                  height: 1.33,
                 ),
               ),
               const SizedBox(height: 12),
               const Text(
-                '회원탈퇴하시면 회원님이 만들었던 모임이\n완전히 사라져서 복구가 불가능해요',
+                '회원탈퇴시 모잇에서 제공되는 다양한 혜택과\n편의 기능의 이용이 불가합니다.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 14,
-                  fontWeight: FontWeight.normal,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
                   color: AppColors.textSecondary,
-                  height: 1.5,
+                  height: 1.38,
                 ),
               ),
               const SizedBox(height: 24),
               Row(
                 children: [
-                  // 다시 생각하기 버튼
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop(false);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.buttonDisabled,
-                        foregroundColor: AppColors.textSecondary,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                        minimumSize: const Size(0, 56),
-                      ),
-                      child: const Text(
-                        '다시 생각하기',
-                        style: TextStyle(
-                          fontFamily: 'Pretendard',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // 탈퇴하기 버튼
+                  // 탈퇴하기 버튼 (왼쪽)
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.of(context).pop(true);
                       },
                       style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFC5C8CE),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        minimumSize: const Size(0, 44),
+                      ),
+                      child: const Text(
+                        '탈퇴하기',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          height: 1.43,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // 다시 생각하기 버튼 (오른쪽)
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(false);
+                      },
+                      style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryBlue,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
+                          borderRadius: BorderRadius.circular(999),
                         ),
-                        minimumSize: const Size(0, 56),
+                        minimumSize: const Size(0, 44),
                       ),
                       child: const Text(
-                        '탈퇴하기',
+                        '다시 생각하기',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          height: 1.43,
                         ),
                       ),
                     ),
@@ -353,10 +360,10 @@ class _WithdrawAccountScreenState extends State<WithdrawAccountScreen> {
                       '탈퇴 시 모잇 서비스 내 개인정보는 모두 파기됩니다.',
                       style: TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 14,
-                        fontWeight: FontWeight.normal,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
                         color: AppColors.textSecondary,
-                        height: 1.5,
+                        height: 1.38,
                       ),
                     ),
                   ),
