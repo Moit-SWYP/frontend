@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:moit/features/auth/presentation/screens/login_screen.dart';
 import 'package:moit/features/auth/presentation/screens/signup_detail_screen.dart';
+import 'package:moit/features/home/presentation/screens/main_tab_screen.dart';
 import 'package:moit/features/settings/presentation/screens/home_profile.dart';
 import 'package:moit/features/settings/presentation/screens/home_profile_my.dart';
 import 'package:moit/features/settings/presentation/screens/home_profile_my_account.dart';
@@ -11,8 +12,15 @@ import 'package:moit/features/settings/presentation/screens/notification_setting
 /// 앱 전체 라우팅 설정
 class AppRouter {
   static final GoRouter router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/home',
     routes: [
+      // 홈 화면 (메인 탭 네비게이션)
+      GoRoute(
+        path: '/home',
+        name: 'home',
+        builder: (context, state) => const MainTabScreen(),
+      ),
+
       // 로그인 화면
       GoRoute(
         path: '/login',
