@@ -4,6 +4,8 @@ import 'package:moit/features/auth/data/models/auth_tokens.dart';
 import 'package:moit/features/auth/data/models/signup_request.dart';
 import 'package:moit/features/auth/providers/auth_state.dart';
 import 'package:moit/features/auth/services/social_login_service.dart';
+import 'package:moit/features/home/providers/home_provider.dart';
+import 'package:moit/features/meeting/providers/meeting_provider.dart';
 import 'package:moit/features/member/providers/user_profile_provider.dart';
 
 /// 인증 상태 Provider
@@ -150,18 +152,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// 로그아웃
   Future<void> logout() async {
+    print('🔄 [Auth] 로그아웃 시작');
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
+      // 소셜 로그인 로그아웃
       await _socialLoginService.logout();
 
-      // 프로필 초기화
+      // 토큰 삭제
+      await _tokenStorage.clearTokens();
+      print('✅ [Auth] 토큰 삭제 완료');
+
+      // 모든 전역 상태 초기화
       _ref.read(userProfileProvider.notifier).clearProfile();
+      _ref.read(meetingProvider.notifier).clearMeetings();
+      _ref.read(homeProvider.notifier).clearHomeData();
+      print('✅ [Auth] 전역 상태 초기화 완료');
 
       state = const AuthState();
+      print('✅ [Auth] 로그아웃 완료');
     } catch (e) {
+      print('❌ [Auth] 로그아웃 에러: $e');
       // 에러가 발생해도 로컬 상태는 초기화
+      await _tokenStorage.clearTokens();
       _ref.read(userProfileProvider.notifier).clearProfile();
+      _ref.read(meetingProvider.notifier).clearMeetings();
+      _ref.read(homeProvider.notifier).clearHomeData();
       state = const AuthState(errorMessage: '로그아웃 중 에러가 발생했습니다');
     }
   }

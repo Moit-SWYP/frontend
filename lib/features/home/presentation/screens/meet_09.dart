@@ -1,50 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:moit/features/home/presentation/screens/meet_07.dart';
+import 'package:moit/features/meeting/providers/vote_provider.dart';
 
 /// 모임 만들기 9단계 - 날짜 투표 확인 화면
-class Meet09Screen extends StatefulWidget {
+class Meet09Screen extends ConsumerStatefulWidget {
+  final int? meetingId; // nullable: 모임 생성 중에는 null
   final String meetingName;
   final Set<DateTime> votedDates;
 
   const Meet09Screen({
     super.key,
+    this.meetingId, // optional
     required this.meetingName,
     required this.votedDates,
   });
 
   @override
-  State<Meet09Screen> createState() => _Meet09ScreenState();
+  ConsumerState<Meet09Screen> createState() => _Meet09ScreenState();
 }
 
-class _Meet09ScreenState extends State<Meet09Screen> {
+class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
   int _selectedTab = 1; // 0: 초대, 1: 일정
   bool _isCalendarExpanded = false;
-  bool _isDateConfirmed = false; // 날짜가 확정되었는지 여부
   late PageController _pageController;
   late int _initialPageIndex;
   late DateTime _currentMonth;
   DateTime? _selectedDate;
-  DateTime? _confirmedDate; // 확정된 날짜
-
-  // 하드코딩된 날짜 후보 (백엔드에서 받을 데이터)
-  final Set<DateTime> _candidateDates = {
-    DateTime(2025, 11, 19),
-    DateTime(2025, 12, 1),
-    DateTime(2025, 12, 7),
-    DateTime(2025, 12, 9),
-    DateTime(2025, 12, 10),
-    DateTime(2025, 12, 16),
-    DateTime(2025, 12, 23),
-  };
-
-  // 하드코딩된 유력한 날짜 (백엔드에서 받을 데이터)
-  final Set<DateTime> _likelyDates = {
-    DateTime(2025, 11, 19),
-    DateTime(2025, 12, 1),
-    DateTime(2025, 12, 9),
-  };
 
   @override
   void initState() {
@@ -52,6 +36,14 @@ class _Meet09ScreenState extends State<Meet09Screen> {
     _currentMonth = DateTime.now();
     _initialPageIndex = 12;
     _pageController = PageController(initialPage: _initialPageIndex);
+
+    // 화면 진입 시 투표 요약 로드 (meetingId가 있을 때만)
+    if (widget.meetingId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        print('📋 [Meet09] 투표 요약 로드 시작: ${widget.meetingId}');
+        ref.read(voteProvider(widget.meetingId!).notifier).loadVoteSummary();
+      });
+    }
   }
 
   @override
@@ -62,6 +54,33 @@ class _Meet09ScreenState extends State<Meet09Screen> {
 
   @override
   Widget build(BuildContext context) {
+    // meetingId가 있을 때만 voteProvider 사용
+    final voteState = widget.meetingId != null
+        ? ref.watch(voteProvider(widget.meetingId!))
+        : null;
+
+    // 에러 메시지 표시
+    if (voteState?.errorMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(voteState!.errorMessage!),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        ref.read(voteProvider(widget.meetingId!).notifier).clearError();
+      });
+    }
+
+    // API 데이터에서 날짜 정보 추출 (meetingId가 있을 때만)
+    final candidateDates = voteState != null ? _getCandidateDates(voteState) : <DateTime>{};
+    final likelyDates = voteState != null ? _getLikelyDates(voteState) : <DateTime>{};
+    final isDateConfirmed = voteState?.summary?.confirmedDate != null;
+    final confirmedDate = voteState?.summary?.confirmedDate != null
+        ? DateTime.parse(voteState!.summary!.confirmedDate!)
+        : null;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -109,13 +128,23 @@ class _Meet09ScreenState extends State<Meet09Screen> {
                     children: [
                       const SizedBox(height: 8),
 
-                      // 만나는 날짜 섹션
-                      _buildDateSection(),
+                      // 로딩 중 (meetingId가 있을 때만)
+                      if (voteState != null && voteState.isLoading && voteState.summary == null)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(32.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      else ...[
+                        // 만나는 날짜 섹션
+                        _buildDateSection(isDateConfirmed, confirmedDate, candidateDates, likelyDates),
 
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                      // 만나는 시간 섹션 (날짜가 확정된 경우에만 표시)
-                      if (_isDateConfirmed) _buildTimeSection(),
+                        // 만나는 시간 섹션 (날짜가 확정된 경우에만 표시)
+                        if (isDateConfirmed) _buildTimeSection(),
+                      ],
                     ],
                   ),
                 ),
@@ -193,7 +222,12 @@ class _Meet09ScreenState extends State<Meet09Screen> {
   }
 
   /// 만나는 날짜 섹션
-  Widget _buildDateSection() {
+  Widget _buildDateSection(
+    bool isDateConfirmed,
+    DateTime? confirmedDate,
+    Set<DateTime> candidateDates,
+    Set<DateTime> likelyDates,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -214,7 +248,7 @@ class _Meet09ScreenState extends State<Meet09Screen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: ShapeDecoration(
-                color: _isDateConfirmed
+                color: isDateConfirmed
                     ? const Color(0xFF0A1D60) // main080 (투표 완료)
                     : const Color(0xFFE8EDFE), // main010 (투표 중)
                 shape: RoundedRectangleBorder(
@@ -222,9 +256,9 @@ class _Meet09ScreenState extends State<Meet09Screen> {
                 ),
               ),
               child: Text(
-                _isDateConfirmed ? '투표 완료' : '투표 중',
+                isDateConfirmed ? '투표 완료' : '투표 중',
                 style: TextStyle(
-                  color: _isDateConfirmed
+                  color: isDateConfirmed
                       ? Colors.white
                       : const Color(0xFF1A49F1),
                   fontSize: 13,
@@ -241,13 +275,15 @@ class _Meet09ScreenState extends State<Meet09Screen> {
         const SizedBox(height: 16),
 
         // 투표 결과 카드 또는 확정된 날짜 카드
-        _isDateConfirmed ? _buildConfirmedDateCard() : _buildVoteResultCard(),
+        isDateConfirmed
+            ? _buildConfirmedDateCard(confirmedDate, candidateDates, likelyDates)
+            : _buildVoteResultCard(candidateDates, likelyDates),
       ],
     );
   }
 
   /// 투표 결과 카드
-  Widget _buildVoteResultCard() {
+  Widget _buildVoteResultCard(Set<DateTime> candidateDates, Set<DateTime> likelyDates) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -271,7 +307,7 @@ class _Meet09ScreenState extends State<Meet09Screen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Expanded(child: _buildLikelyDatesText()),
+                Expanded(child: _buildLikelyDatesText(likelyDates)),
                 Icon(
                   _isCalendarExpanded
                       ? Icons.keyboard_arrow_up
@@ -286,7 +322,7 @@ class _Meet09ScreenState extends State<Meet09Screen> {
           // 캘린더 (드롭다운 시 표시)
           if (_isCalendarExpanded) ...[
             const SizedBox(height: 16),
-            _buildExpandedCalendar(),
+            _buildExpandedCalendar(candidateDates, likelyDates),
             const SizedBox(height: 16),
             _buildLegend(),
             const SizedBox(height: 24),
@@ -300,13 +336,28 @@ class _Meet09ScreenState extends State<Meet09Screen> {
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: () {
-                    // 날짜 확정
-                    setState(() {
-                      _isDateConfirmed = true;
-                      _confirmedDate = DateTime(2025, 12, 9);
-                      _isCalendarExpanded = false;
-                    });
+                  onTap: () async {
+                    // meetingId가 없으면 (모임 생성 중) 아무것도 안 함
+                    if (widget.meetingId == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('모임 생성을 완료한 후 날짜를 확정할 수 있습니다'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                      return;
+                    }
+
+                    // 날짜 확정 API 호출
+                    final success = await ref
+                        .read(voteProvider(widget.meetingId!).notifier)
+                        .confirmDate();
+
+                    if (success && mounted) {
+                      setState(() {
+                        _isCalendarExpanded = false;
+                      });
+                    }
                   },
                   child: Container(
                     padding: const EdgeInsets.all(12),
@@ -382,8 +433,8 @@ class _Meet09ScreenState extends State<Meet09Screen> {
   }
 
   /// 유력한 날짜 텍스트 생성
-  Widget _buildLikelyDatesText() {
-    final sortedDates = _likelyDates.toList()..sort();
+  Widget _buildLikelyDatesText(Set<DateTime> likelyDates) {
+    final sortedDates = likelyDates.toList()..sort();
 
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.end,
@@ -450,7 +501,7 @@ class _Meet09ScreenState extends State<Meet09Screen> {
   }
 
   /// 확장된 캘린더
-  Widget _buildExpandedCalendar() {
+  Widget _buildExpandedCalendar(Set<DateTime> candidateDates, Set<DateTime> likelyDates) {
     return Container(
       decoration: ShapeDecoration(
         color: Colors.white,
@@ -552,7 +603,7 @@ class _Meet09ScreenState extends State<Meet09Screen> {
                   DateTime.now().month + monthOffset,
                   1,
                 );
-                return _buildCalendarGrid(displayMonth);
+                return _buildCalendarGrid(displayMonth, candidateDates, likelyDates);
               },
             ),
           ),
@@ -562,7 +613,7 @@ class _Meet09ScreenState extends State<Meet09Screen> {
   }
 
   /// 캘린더 그리드
-  Widget _buildCalendarGrid(DateTime displayMonth) {
+  Widget _buildCalendarGrid(DateTime displayMonth, Set<DateTime> candidateDates, Set<DateTime> likelyDates) {
     final firstDayOfMonth = DateTime(displayMonth.year, displayMonth.month, 1);
     final lastDayOfMonth = DateTime(displayMonth.year, displayMonth.month + 1, 0);
     final daysInMonth = lastDayOfMonth.day;
@@ -578,10 +629,10 @@ class _Meet09ScreenState extends State<Meet09Screen> {
     // 날짜 추가
     for (int day = 1; day <= daysInMonth; day++) {
       final date = DateTime(displayMonth.year, displayMonth.month, day);
-      final isCandidate = _candidateDates.any((d) =>
+      final isCandidate = candidateDates.any((d) =>
         d.year == date.year && d.month == date.month && d.day == date.day
       );
-      final isLikely = _likelyDates.any((d) =>
+      final isLikely = likelyDates.any((d) =>
         d.year == date.year && d.month == date.month && d.day == date.day
       );
       final isSelected = _selectedDate != null &&
@@ -729,6 +780,52 @@ class _Meet09ScreenState extends State<Meet09Screen> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
+  /// API 데이터에서 날짜 후보 추출 (모든 투표된 날짜)
+  Set<DateTime> _getCandidateDates(VoteState voteState) {
+    final dates = <DateTime>{};
+
+    // 날짜 투표 요약에서 최다 득표 날짜 추출
+    if (voteState.summary?.dateSummary?.topDates != null) {
+      for (final dateStr in voteState.summary!.dateSummary!.topDates) {
+        try {
+          dates.add(DateTime.parse(dateStr));
+        } catch (e) {
+          print('⚠️ [Meet09] 날짜 파싱 실패: $dateStr');
+        }
+      }
+    }
+
+    // 내가 투표한 날짜도 포함
+    if (voteState.summary?.dateSummary?.votedDates != null) {
+      for (final dateStr in voteState.summary!.dateSummary!.votedDates) {
+        try {
+          dates.add(DateTime.parse(dateStr));
+        } catch (e) {
+          print('⚠️ [Meet09] 날짜 파싱 실패: $dateStr');
+        }
+      }
+    }
+
+    return dates;
+  }
+
+  /// API 데이터에서 유력한 날짜 추출 (최다 득표 날짜)
+  Set<DateTime> _getLikelyDates(VoteState voteState) {
+    final dates = <DateTime>{};
+
+    if (voteState.summary?.dateSummary?.topDates != null) {
+      for (final dateStr in voteState.summary!.dateSummary!.topDates) {
+        try {
+          dates.add(DateTime.parse(dateStr));
+        } catch (e) {
+          print('⚠️ [Meet09] 날짜 파싱 실패: $dateStr');
+        }
+      }
+    }
+
+    return dates;
+  }
+
   /// 만날 수 있는 사람 섹션
   Widget _buildAvailablePeople() {
     // 하드코딩된 더미 데이터
@@ -831,9 +928,10 @@ class _Meet09ScreenState extends State<Meet09Screen> {
   }
 
   /// 확정된 날짜 카드
-  Widget _buildConfirmedDateCard() {
-    // 하드코딩: 12월 9일로 확정
-    final confirmedDate = _confirmedDate ?? DateTime(2025, 12, 9);
+  Widget _buildConfirmedDateCard(DateTime? confirmedDate, Set<DateTime> candidateDates, Set<DateTime> likelyDates) {
+    if (confirmedDate == null) {
+      return const SizedBox.shrink();
+    }
 
     return Container(
       width: double.infinity,
@@ -921,7 +1019,7 @@ class _Meet09ScreenState extends State<Meet09Screen> {
           // 캘린더 (드롭다운 시 표시)
           if (_isCalendarExpanded) ...[
             const SizedBox(height: 16),
-            _buildExpandedCalendar(),
+            _buildExpandedCalendar(candidateDates, likelyDates),
             const SizedBox(height: 16),
             _buildLegend(),
             const SizedBox(height: 24),
@@ -930,13 +1028,21 @@ class _Meet09ScreenState extends State<Meet09Screen> {
 
           const SizedBox(height: 16),
 
-          // 다시 정하기 버튼
+          // 다시 정하기 버튼 (날짜 확정 취소)
           GestureDetector(
-            onTap: () {
-              setState(() {
-                _isDateConfirmed = false;
-                _confirmedDate = null;
-              });
+            onTap: () async {
+              // meetingId가 없으면 아무것도 안 함
+              if (widget.meetingId == null) return;
+
+              final success = await ref
+                  .read(voteProvider(widget.meetingId!).notifier)
+                  .cancelDateConfirm();
+
+              if (success && mounted) {
+                setState(() {
+                  _isCalendarExpanded = false;
+                });
+              }
             },
             child: Container(
               width: double.infinity,

@@ -132,4 +132,10 @@ class MeetingNotifier extends StateNotifier<MeetingState> {
       state = state.copyWith(errorMessage: null);
     }
   }
+
+  /// 모임 리스트 초기화 (로그아웃 시 사용)
+  void clearMeetings() {
+    print('🔄 [Meeting] 모임 리스트 초기화');
+    state = const MeetingState();
+  }
 }
