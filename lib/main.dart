@@ -15,15 +15,15 @@ void main() {
   );
 }
 
-class MoitApp extends StatelessWidget {
+class MoitApp extends ConsumerWidget {
   const MoitApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'Moit',
       theme: AppTheme.lightTheme,
-      routerConfig: AppRouter.router,
+      routerConfig: AppRouter.router(ref),
       debugShowCheckedModeBanner: false,
     );
   }

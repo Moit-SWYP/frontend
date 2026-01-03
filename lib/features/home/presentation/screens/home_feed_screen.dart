@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moit/features/home/presentation/widgets/confirmed_meeting_card.dart';
 import 'package:moit/features/home/presentation/widgets/voting_meeting_card.dart';
 import 'package:moit/features/home/presentation/widgets/page_indicator.dart';
 import 'package:moit/features/home/presentation/screens/vote_home.dart';
+import 'package:moit/features/member/providers/user_profile_provider.dart';
 
 /// 메인 홈 피드 화면
-class HomeFeedScreen extends StatefulWidget {
+class HomeFeedScreen extends ConsumerStatefulWidget {
   const HomeFeedScreen({super.key});
 
   @override
-  State<HomeFeedScreen> createState() => _HomeFeedScreenState();
+  ConsumerState<HomeFeedScreen> createState() => _HomeFeedScreenState();
 }
 
-class _HomeFeedScreenState extends State<HomeFeedScreen> {
+class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> {
   int _currentPage = 0;
   final PageController _pageController = PageController();
 
@@ -46,7 +48,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                     const SizedBox(height: 24),
 
                     // 인사말 섹션
-                    _buildGreetingSection(),
+                    _buildGreetingSection(ref),
 
                     const SizedBox(height: 24),
 
@@ -134,7 +136,9 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   }
 
   /// 인사말 섹션
-  Widget _buildGreetingSection() {
+  Widget _buildGreetingSection(WidgetRef ref) {
+    final userProfile = ref.watch(userProfileProvider);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -149,7 +153,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '수빈',
+                  userProfile.displayName,
                   style: const TextStyle(
                     color: Color(0xFF111111), // txt-primary
                     fontSize: 18,

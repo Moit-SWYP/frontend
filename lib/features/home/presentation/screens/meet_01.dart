@@ -1,22 +1,89 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moit/features/home/presentation/screens/meet_03.dart';
+import 'package:moit/features/meeting/data/models/meeting_create_request.dart';
+import 'package:moit/features/meeting/providers/meeting_provider.dart';
 
 /// 모임 만들기 1단계 - 약속 이름 입력 화면
-class Meet01Screen extends StatefulWidget {
+class Meet01Screen extends ConsumerStatefulWidget {
   const Meet01Screen({super.key});
 
   @override
-  State<Meet01Screen> createState() => _Meet01ScreenState();
+  ConsumerState<Meet01Screen> createState() => _Meet01ScreenState();
 }
 
-class _Meet01ScreenState extends State<Meet01Screen> {
+class _Meet01ScreenState extends ConsumerState<Meet01Screen> {
   final TextEditingController _nameController = TextEditingController();
   bool _isFocused = false;
+  bool _isCreating = false; // API 호출 중 상태
 
   @override
   void dispose() {
     _nameController.dispose();
     super.dispose();
+  }
+
+  /// 모임 생성 API 호출
+  Future<void> _createMeetingAndProceed() async {
+    final meetingName = _nameController.text.trim();
+    if (meetingName.isEmpty) return;
+
+    setState(() {
+      _isCreating = true;
+    });
+
+    print('🔄 [Meet01] 모임 생성 시작: $meetingName');
+
+    try {
+      // API 호출
+      final request = MeetingCreateRequest(title: meetingName);
+      final success = await ref.read(meetingProvider.notifier).createMeeting(request);
+
+      if (!mounted) return;
+
+      if (success) {
+        print('✅ [Meet01] 모임 생성 성공 → 다음 화면으로 이동');
+
+        // 성공 시 다음 화면으로 이동
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Meet03Screen(
+              meetingName: meetingName,
+            ),
+          ),
+        );
+      } else {
+        print('❌ [Meet01] 모임 생성 실패');
+
+        // 실패 시 SnackBar 표시
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('모임 생성에 실패했습니다. 다시 시도해주세요.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ [Meet01] 모임 생성 에러: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('모임 생성 중 오류가 발생했습니다.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCreating = false;
+        });
+      }
+    }
   }
 
   @override
@@ -133,23 +200,14 @@ class _Meet01ScreenState extends State<Meet01Screen> {
 
               // 다음으로 버튼
               GestureDetector(
-                onTap: _nameController.text.isNotEmpty
-                    ? () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => Meet03Screen(
-                              meetingName: _nameController.text,
-                            ),
-                          ),
-                        );
-                      }
+                onTap: (_nameController.text.isNotEmpty && !_isCreating)
+                    ? _createMeetingAndProceed
                     : null,
                 child: Container(
                   width: double.infinity,
                   height: 56,
                   decoration: ShapeDecoration(
-                    color: _nameController.text.isNotEmpty
+                    color: (_nameController.text.isNotEmpty && !_isCreating)
                         ? const Color(0xFF1A49F1) // main050
                         : const Color(0xFFC5C8CE), // grey050
                     shape: RoundedRectangleBorder(
@@ -164,18 +222,27 @@ class _Meet01ScreenState extends State<Meet01Screen> {
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Text(
-                      '다음으로',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w700,
-                        height: 1.50,
-                      ),
-                    ),
+                  child: Center(
+                    child: _isCreating
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            '다음으로',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontFamily: 'Pretendard',
+                              fontWeight: FontWeight.w700,
+                              height: 1.50,
+                            ),
+                          ),
                   ),
                 ),
               ),

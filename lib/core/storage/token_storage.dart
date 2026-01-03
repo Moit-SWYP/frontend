@@ -24,15 +24,23 @@ class TokenStorage {
     required String accessToken,
     required String refreshToken,
   }) async {
+    print('💾 [TokenStorage] 토큰 저장 시작');
+    print('💾 [TokenStorage] AccessToken: ${accessToken.substring(0, 20)}...');
+    print('💾 [TokenStorage] RefreshToken: ${refreshToken.substring(0, 20)}...');
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_accessTokenKey, accessToken);
     await prefs.setString(_refreshTokenKey, refreshToken);
+
+    print('✅ [TokenStorage] 토큰 저장 완료');
   }
 
   /// 액세스 토큰 가져오기
   Future<String?> getAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_accessTokenKey);
+    final token = prefs.getString(_accessTokenKey);
+    print('🔑 [TokenStorage] getAccessToken - 토큰 ${token != null ? "존재 (${token.substring(0, 20)}...)" : "없음"}');
+    return token;
   }
 
   /// 리프레시 토큰 가져오기

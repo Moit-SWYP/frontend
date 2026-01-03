@@ -1,6 +1,8 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moit/features/auth/presentation/screens/login_screen.dart';
 import 'package:moit/features/auth/presentation/screens/signup_detail_screen.dart';
+import 'package:moit/features/auth/providers/auth_provider.dart';
 import 'package:moit/features/home/presentation/screens/main_tab_screen.dart';
 import 'package:moit/features/settings/presentation/screens/home_profile.dart';
 import 'package:moit/features/settings/presentation/screens/home_profile_my.dart';
@@ -11,15 +13,33 @@ import 'package:moit/features/settings/presentation/screens/notification_setting
 
 /// 앱 전체 라우팅 설정
 class AppRouter {
-  static final GoRouter router = GoRouter(
-    initialLocation: '/home',
-    routes: [
-      // 홈 화면 (메인 탭 네비게이션)
-      GoRoute(
-        path: '/home',
-        name: 'home',
-        builder: (context, state) => const MainTabScreen(),
-      ),
+  static GoRouter router(WidgetRef ref) => GoRouter(
+        initialLocation: '/login',
+        redirect: (context, state) {
+          final authState = ref.read(authProvider);
+          final isAuthenticated = authState.isAuthenticated;
+          final isLoginPage = state.matchedLocation == '/login';
+          final isSignupPage = state.matchedLocation.startsWith('/signup');
+
+          // 로그인 안 된 상태에서 보호된 페이지 접근 시 로그인 페이지로
+          if (!isAuthenticated && !isLoginPage && !isSignupPage) {
+            return '/login';
+          }
+
+          // 로그인 된 상태에서 로그인/회원가입 페이지 접근 시 홈으로
+          if (isAuthenticated && (isLoginPage || isSignupPage)) {
+            return '/';
+          }
+
+          return null; // 리다이렉트 없음
+        },
+        routes: [
+          // 홈 화면 (메인 탭 네비게이션)
+          GoRoute(
+            path: '/',
+            name: 'home',
+            builder: (context, state) => const MainTabScreen(),
+          ),
 
       // 로그인 화면
       GoRoute(

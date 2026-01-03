@@ -5,7 +5,7 @@ part 'api_response.g.dart';
 /// API 공통 응답 모델
 @JsonSerializable(genericArgumentFactories: true)
 class ApiResponse<T> {
-  final int code;
+  final String code;
   final String message;
   final T? data;
 

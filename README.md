@@ -25,6 +25,8 @@ Moit는 그룹 내에서 만남 일정을 조율하고 투표를 통해 날짜�
 
 ## Getting Started
 
+클로드는 항상 사용자에게 한국어로 대답한다.
+
 This project is a starting point for a Flutter application.
 
 A few resources to get you started if this is your first Flutter project:

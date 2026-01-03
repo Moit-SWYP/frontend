@@ -18,15 +18,23 @@ class AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
+    print('🔐 [AuthInterceptor] 요청: ${options.method} ${options.path}');
+
     // 로그인/회원가입/토큰 재발급 요청은 토큰 불필요
     if (_isAuthEndpoint(options.path)) {
+      print('🔐 [AuthInterceptor] 인증 불필요 엔드포인트');
       return handler.next(options);
     }
 
     // 액세스 토큰 추가
     final accessToken = await _tokenStorage.getAccessToken();
+    print('🔐 [AuthInterceptor] 저장된 AccessToken: ${accessToken != null ? "${accessToken.substring(0, 20)}..." : "null"}');
+
     if (accessToken != null) {
       options.headers['Authorization'] = 'Bearer $accessToken';
+      print('🔐 [AuthInterceptor] Authorization 헤더 추가 완료');
+    } else {
+      print('❌ [AuthInterceptor] AccessToken이 없습니다!');
     }
 
     handler.next(options);

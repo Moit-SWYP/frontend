@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:moit/features/home/presentation/screens/home_empty_screen.dart';
+import 'package:moit/features/home/presentation/screens/home_screen.dart';
 import 'package:moit/features/home/presentation/screens/calendar_placeholder_screen.dart';
 import 'package:moit/features/home/presentation/screens/friends_placeholder_screen.dart';
 
@@ -19,7 +19,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
 
   // 탭별 화면 목록
   static const List<Widget> _screens = [
-    HomeEmptyScreen(), // 빈 홈 화면 (모임 없을 때)
+    HomeScreen(), // 홈 화면 (모임 리스트 표시)
     CalendarPlaceholderScreen(),
     FriendsPlaceholderScreen(),
   ];

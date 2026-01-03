@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moit/core/constants/app_colors.dart';
 import 'package:moit/core/constants/app_text_styles.dart';
+import 'package:moit/features/member/providers/user_profile_provider.dart';
+import 'package:moit/features/member/providers/user_profile_state.dart';
 import 'package:moit/features/settings/presentation/widgets/settings_section.dart';
 import 'package:moit/features/settings/presentation/widgets/settings_menu_item.dart';
 
 /// 설정 화면
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userProfile = ref.watch(userProfileProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -43,7 +48,7 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: 24),
 
               // 프로필 영역
-              _buildProfileSection(),
+              _buildProfileSection(userProfile),
 
               const SizedBox(height: 40),
 
@@ -109,7 +114,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   /// 프로필 섹션
-  Widget _buildProfileSection() {
+  Widget _buildProfileSection(UserProfileState userProfile) {
     return Row(
       children: [
         // 프로필 아바타
@@ -139,7 +144,7 @@ class SettingsScreen extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  '남수빈',
+                  userProfile.displayName,
                   style: AppTextStyles.subtitle1.copyWith(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -167,7 +172,7 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 4),
             // 부제목
             Text(
-              '미식형 · 여성',
+              userProfile.profile?.genderText ?? '',
               style: AppTextStyles.caption.copyWith(
                 fontSize: 14,
                 color: AppColors.textSecondary,

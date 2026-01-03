@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:moit/core/constants/app_colors.dart';
 import 'package:moit/core/constants/app_text_styles.dart';
-
-enum Gender { male, female }
+import 'package:moit/features/auth/data/models/signup_request.dart';
 
 /// 성별 선택 위젯
 class GenderSelector extends StatelessWidget {

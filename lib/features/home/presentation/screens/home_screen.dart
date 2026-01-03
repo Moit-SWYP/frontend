@@ -2,21 +2,61 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:moit/core/utils/date_formatter.dart';
 import 'package:moit/features/home/presentation/screens/meet_01.dart';
+import 'package:moit/features/meeting/data/models/meeting_brief.dart';
+import 'package:moit/features/meeting/providers/meeting_provider.dart';
 import 'package:moit/features/member/providers/user_profile_provider.dart';
 
-/// 메인 홈 빈 화면 (모임이 없을 때)
-class HomeEmptyScreen extends ConsumerWidget {
-  const HomeEmptyScreen({super.key});
+/// 메인 홈 화면 (모임 리스트 표시)
+class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 화면 진입 시 모임 리스트 로드
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('🏠 [Home] 화면 진입 → 모임 리스트 로드');
+      ref.read(meetingProvider.notifier).loadMeetings();
+    });
+  }
+
+  /// Pull-to-refresh 핸들러
+  Future<void> _handleRefresh() async {
+    print('🔄 [Home] Pull-to-refresh 시작');
+    await ref.read(meetingProvider.notifier).loadMeetings();
+    print('✅ [Home] Pull-to-refresh 완료');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final meetingState = ref.watch(meetingProvider);
     final userProfile = ref.watch(userProfileProvider);
 
-    print('🏠 [HomeEmpty] 빌드 시작');
-    print('🏠 [HomeEmpty] userProfile.hasProfile: ${userProfile.hasProfile}');
-    print('🏠 [HomeEmpty] userProfile.displayName: ${userProfile.displayName}');
-    print('🏠 [HomeEmpty] userProfile.isLoading: ${userProfile.isLoading}');
+    print('🏠 [Home] 빌드 시작');
+    print('🏠 [Home] meetings.length: ${meetingState.meetings.length}');
+    print('🏠 [Home] isLoading: ${meetingState.isLoading}');
+
+    // 에러 메시지가 있으면 SnackBar 표시
+    if (meetingState.errorMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(meetingState.errorMessage!),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        // 에러 메시지 표시 후 클리어
+        ref.read(meetingProvider.notifier).clearError();
+      });
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -24,29 +64,47 @@ class HomeEmptyScreen extends ConsumerWidget {
         child: Stack(
           children: [
             // 메인 콘텐츠
-            SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
+            RefreshIndicator(
+              onRefresh: _handleRefresh,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(), // Pull-to-refresh 항상 활성화
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
 
-                    // 상단 바 (로고 + 알림/설정 아이콘)
-                    _buildTopBar(context),
+                      // 상단 바 (로고 + 알림/설정 아이콘)
+                      _buildTopBar(context),
 
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    // 인사말 섹션
-                    _buildGreetingSection(userProfile.displayName),
+                      // 인사말 섹션
+                      _buildGreetingSection(userProfile.displayName, meetingState.count),
 
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    // 빈 상태 박스
-                    _buildEmptyStateBox(context),
+                      // 로딩 중일 때
+                      if (meetingState.isLoading && meetingState.meetings.isEmpty)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(32.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
 
-                    const SizedBox(height: 100), // 플로팅 버튼 공간 확보
-                  ],
+                      // 모임이 없을 때
+                      else if (meetingState.isEmpty)
+                        _buildEmptyStateBox(context)
+
+                      // 모임이 있을 때
+                      else
+                        _buildMeetingList(meetingState.meetings),
+
+                      const SizedBox(height: 100), // 플로팅 버튼 공간 확보
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -121,7 +179,7 @@ class HomeEmptyScreen extends ConsumerWidget {
   }
 
   /// 인사말 섹션
-  Widget _buildGreetingSection(String userName) {
+  Widget _buildGreetingSection(String userName, int meetingCount) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -158,9 +216,11 @@ class HomeEmptyScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 4),
-            // "모임을 만들어볼까요?"
+            // 모임 개수에 따른 메시지
             Text(
-              '모임을 만들어볼까요?',
+              meetingCount == 0
+                  ? '모임을 만들어볼까요?'
+                  : '오늘도 즐거운 모임 되세요!',
               style: const TextStyle(
                 color: Color(0xFF111111), // txt-primary
                 fontSize: 24,
@@ -174,7 +234,7 @@ class HomeEmptyScreen extends ConsumerWidget {
         // 우측 캐릭터 아이콘
         Transform(
           alignment: Alignment.center,
-          transform: Matrix4.rotationY(3.14159), // 수평 반전 (Y축 기준 180도 회전)
+          transform: Matrix4.rotationY(3.14159), // 수평 반전
           child: Container(
             width: 100,
             height: 100,
@@ -211,7 +271,7 @@ class HomeEmptyScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // 텍스트 영역
-          Container(
+          SizedBox(
             width: double.infinity,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -295,6 +355,164 @@ class HomeEmptyScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// 모임 리스트
+  Widget _buildMeetingList(List meetings) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // "내 모임" 타이틀
+        Text(
+          '내 모임',
+          style: const TextStyle(
+            color: Color(0xFF111111),
+            fontSize: 16,
+            fontFamily: 'Pretendard',
+            fontWeight: FontWeight.w700,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // 모임 카드 리스트
+        ...meetings.map((meeting) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildMeetingCard(meeting),
+            )),
+      ],
+    );
+  }
+
+  /// 모임 카드
+  Widget _buildMeetingCard(dynamic meeting) {
+    // 상태별 색상 결정
+    final statusColor = _getStatusColor(meeting.status);
+    final statusBgColor = _getStatusBackgroundColor(meeting.status);
+
+    // 날짜 포맷팅
+    final dateText = meeting.date != null
+        ? DateFormatter.toKoreanDate(meeting.date)
+        : null;
+
+    return GestureDetector(
+      onTap: () {
+        // TODO: 모임 상세 화면으로 이동
+        print('🔍 [Home] 모임 카드 클릭: ${meeting.meetingId} - ${meeting.title}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${meeting.title} 상세 화면 (준비 중)'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(width: 1, color: Color(0xFFE5E5E5)),
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 모임 제목
+          Text(
+            meeting.title,
+            style: const TextStyle(
+              color: Color(0xFF111111),
+              fontSize: 16,
+              fontFamily: 'Pretendard',
+              fontWeight: FontWeight.w700,
+              height: 1.5,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 8),
+
+          // 상태 및 날짜
+          Row(
+            children: [
+              // 상태 뱃지
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: ShapeDecoration(
+                  color: statusBgColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                child: Text(
+                  meeting.statusText,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w500,
+                    height: 1.33,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // 날짜 (있을 경우)
+              if (dateText != null)
+                Text(
+                  dateText,
+                  style: const TextStyle(
+                    color: Color(0xFF999999),
+                    fontSize: 13,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w400,
+                    height: 1.38,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+      ),
+    );
+  }
+
+  /// 상태별 텍스트 색상 반환
+  Color _getStatusColor(MeetingStatus status) {
+    switch (status) {
+      case MeetingStatus.created:
+        return const Color(0xFF1A49F1); // main050 (파란색)
+      case MeetingStatus.dateVoting:
+      case MeetingStatus.timeVoting:
+      case MeetingStatus.placeVoting:
+        return const Color(0xFFFF8A00); // 주황색 (투표 중)
+      case MeetingStatus.fixed:
+        return const Color(0xFF00C853); // 초록색 (확정됨)
+      case MeetingStatus.done:
+        return const Color(0xFF999999); // 회색 (완료됨)
+      default:
+        return const Color(0xFF505050); // txt-secondary
+    }
+  }
+
+  /// 상태별 배경 색상 반환
+  Color _getStatusBackgroundColor(MeetingStatus status) {
+    switch (status) {
+      case MeetingStatus.created:
+        return const Color(0xFFE8EEFF); // 연한 파란색
+      case MeetingStatus.dateVoting:
+      case MeetingStatus.timeVoting:
+      case MeetingStatus.placeVoting:
+        return const Color(0xFFFFF4E6); // 연한 주황색
+      case MeetingStatus.fixed:
+        return const Color(0xFFE8F5E9); // 연한 초록색
+      case MeetingStatus.done:
+        return const Color(0xFFF5F5F5); // 연한 회색
+      default:
+        return const Color(0xFFF7F8F9); // grey030
+    }
   }
 
   /// 플로팅 액션 버튼 (모임 만들기)

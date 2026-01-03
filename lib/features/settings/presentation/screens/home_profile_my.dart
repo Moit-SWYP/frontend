@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moit/core/constants/app_colors.dart';
 import 'package:moit/core/constants/app_text_styles.dart';
 import 'package:moit/core/services/kakao_login_service.dart';
+import 'package:moit/features/member/providers/user_profile_provider.dart';
 
 /// 내 정보 화면
-class MyProfileScreen extends StatelessWidget {
+class MyProfileScreen extends ConsumerWidget {
   const MyProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userProfile = ref.watch(userProfileProvider);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -62,21 +65,21 @@ class MyProfileScreen extends StatelessWidget {
               // 이름
               _buildSectionTitle('이름'),
               const SizedBox(height: 16),
-              _buildReadOnlyField('남수빈'),
+              _buildReadOnlyField(userProfile.displayName),
 
               const SizedBox(height: 16),
 
               // 생년월일
               _buildSectionTitle('생년월일'),
               const SizedBox(height: 16),
-              _buildReadOnlyField('1999.06.16'),
+              _buildReadOnlyField(userProfile.profile?.birthDate.replaceAll('-', '.') ?? ''),
 
               const SizedBox(height: 16),
 
               // 성별
               _buildSectionTitle('성별'),
               const SizedBox(height: 16),
-              _buildReadOnlyField('여성'),
+              _buildReadOnlyField(userProfile.profile?.genderText ?? ''),
 
               const SizedBox(height: 16),
 

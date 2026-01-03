@@ -38,6 +38,18 @@
         <meta-data
             android:name="com.kakao.sdk.AppKey"
             android:value="5f85d667c593c86d5bc8372844f15800" />
+
+        <!-- 카카오 로그인 Redirect Activity -->
+        <activity
+            android:name="com.kakao.sdk.flutter.AuthCodeCustomTabsActivity"
+            android:exported="true">
+            <intent-filter android:label="flutter_web_auth">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="kakao5f85d667c593c86d5bc8372844f15800" />
+            </intent-filter>
+        </activity>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

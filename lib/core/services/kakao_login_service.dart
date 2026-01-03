@@ -33,14 +33,32 @@ class KakaoLoginService {
       // 사용자 정보 가져오기
       User user = await UserApi.instance.me();
 
-      return {
+      // 🔍 디버깅: 카카오에서 받은 사용자 정보 출력
+      print('📱 [카카오 로그인] 사용자 ID: ${user.id}');
+      print('📱 [카카오 로그인] 이메일: ${user.kakaoAccount?.email}');
+      print('📱 [카카오 로그인] 닉네임: ${user.kakaoAccount?.profile?.nickname}');
+      print('📱 [카카오 로그인] 이메일 제공 동의: ${user.kakaoAccount?.emailNeedsAgreement}');
+
+      final email = user.kakaoAccount?.email;
+
+      // 이메일이 없는 경우 예외 처리
+      if (email == null || email.isEmpty) {
+        throw Exception('카카오 계정에서 이메일 정보를 가져올 수 없습니다. 카카오 개발자 콘솔에서 이메일 동의 항목을 활성화해주세요.');
+      }
+
+      final userInfo = {
         'socialProvider': 'KAKAO',
         'socialId': user.id.toString(),
-        'email': user.kakaoAccount?.email ?? '',
+        'email': email,
         'nickname': user.kakaoAccount?.profile?.nickname ?? '',
         'profileImage': user.kakaoAccount?.profile?.profileImageUrl ?? '',
       };
+
+      print('✅ [카카오 로그인] 변환된 사용자 정보: $userInfo');
+
+      return userInfo;
     } catch (e) {
+      print('❌ [카카오 로그인] 에러: $e');
       throw Exception('카카오 로그인 실패: $e');
     }
   }

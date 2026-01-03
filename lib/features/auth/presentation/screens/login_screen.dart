@@ -1,15 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moit/core/constants/app_colors.dart';
 import 'package:moit/core/constants/app_text_styles.dart';
 import 'package:moit/features/auth/presentation/widgets/oauth_button.dart';
+import 'package:moit/features/auth/providers/auth_provider.dart';
 
 /// 로그인 화면
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+
+    // 로딩 중일 때
+    if (authState.isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -21,10 +35,32 @@ class LoginScreen extends StatelessWidget {
 
             const Spacer(),
 
+            // 에러 메시지 표시
+            if (authState.errorMessage != null) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    authState.errorMessage!,
+                    style: AppTextStyles.caption.copyWith(
+                      color: Colors.red.shade900,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // OAuth 버튼들
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: _buildOAuthButtons(context),
+              child: _buildOAuthButtons(context, ref),
             ),
 
             const SizedBox(height: 16),
@@ -96,7 +132,7 @@ class LoginScreen extends StatelessWidget {
   }
 
   /// OAuth 로그인 버튼들
-  Widget _buildOAuthButtons(BuildContext context) {
+  Widget _buildOAuthButtons(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
         // 임시 테스트 버튼 - 설정 화면으로 이동
@@ -119,11 +155,21 @@ class LoginScreen extends StatelessWidget {
 
         // 카카오 로그인
         OAuthButton.kakao(
-          onPressed: () {
-            // TODO: 카카오 로그인 로직 구현
-            print('카카오 로그인 클릭');
-            // 임시로 회원가입 화면으로 이동
-            context.push('/signup/detail');
+          onPressed: () async {
+            // 카카오 로그인 실행
+            await ref.read(authProvider.notifier).loginWithKakao();
+
+            // 로그인 후 상태 확인
+            if (!context.mounted) return;
+            final newState = ref.read(authProvider);
+
+            if (newState.isAuthenticated) {
+              // 기존 회원 → 홈 화면으로
+              context.go('/');
+            } else if (newState.requiresSignup) {
+              // 신규 회원 → 회원가입 화면으로
+              context.push('/signup/detail');
+            }
           },
         ),
         const SizedBox(height: 12),
@@ -132,9 +178,9 @@ class LoginScreen extends StatelessWidget {
         OAuthButton.naver(
           onPressed: () {
             // TODO: 네이버 로그인 로직 구현
-            print('네이버 로그인 클릭');
-            // 임시로 회원가입 화면으로 이동
-            context.push('/signup/detail');
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('네이버 로그인은 준비 중입니다')),
+            );
           },
         ),
       ],

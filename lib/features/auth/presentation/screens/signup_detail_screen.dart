@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:moit/core/constants/app_colors.dart';
 import 'package:moit/core/constants/app_text_styles.dart';
 import 'package:moit/features/auth/presentation/widgets/custom_text_field.dart';
 import 'package:moit/features/auth/presentation/widgets/gender_selector.dart';
+import 'package:moit/features/auth/providers/auth_provider.dart';
+import 'package:moit/features/auth/data/models/signup_request.dart';
 
 /// 회원가입 상세 정보 입력 화면
-class SignupDetailScreen extends StatefulWidget {
+class SignupDetailScreen extends ConsumerStatefulWidget {
   const SignupDetailScreen({super.key});
 
   @override
-  State<SignupDetailScreen> createState() => _SignupDetailScreenState();
+  ConsumerState<SignupDetailScreen> createState() => _SignupDetailScreenState();
 }
 
-class _SignupDetailScreenState extends State<SignupDetailScreen> {
+class _SignupDetailScreenState extends ConsumerState<SignupDetailScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _birthDateController = TextEditingController();
@@ -62,22 +66,41 @@ class _SignupDetailScreenState extends State<SignupDetailScreen> {
   }
 
   /// 다음 버튼 클릭
-  void _handleNext() {
-    if (_formKey.currentState!.validate()) {
-      // TODO: 회원가입 API 호출
-      debugPrint('이름: ${_nameController.text}');
-      debugPrint('성별: ${_selectedGender == Gender.male ? '남자' : '여자'}');
-      debugPrint('생년월일: ${_birthDateController.text}');
+  void _handleNext() async {
+    if (_formKey.currentState!.validate() && _selectedGender != null) {
+      // 생년월일을 yyyy-MM-dd 형식으로 변환
+      final birthDate = _birthDateController.text;
+      final formattedBirthDate = '${birthDate.substring(0, 4)}-${birthDate.substring(4, 6)}-${birthDate.substring(6, 8)}';
 
-      // TODO: 다음 화면으로 이동 또는 회원가입 완료 처리
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('회원가입 정보가 입력되었습니다')),
+      // 회원가입 API 호출
+      await ref.read(authProvider.notifier).signup(
+        nickname: _nameController.text,
+        birthDate: formattedBirthDate,
+        gender: _selectedGender!,
+        characterType: CharacterType.foodie, // TODO: 캐릭터 선택 화면 추가 시 수정
       );
+
+      if (!mounted) return;
+
+      // 회원가입 후 상태 확인
+      final newState = ref.read(authProvider);
+
+      if (newState.isAuthenticated) {
+        // 회원가입 성공 → 홈 화면으로
+        context.go('/');
+      } else if (newState.errorMessage != null) {
+        // 에러 발생 시 스낵바 표시
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(newState.errorMessage!)),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -86,25 +109,45 @@ class _SignupDetailScreenState extends State<SignupDetailScreen> {
         ),
       ),
       body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 8),
+        child: authState.isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 8),
 
-                      // 타이틀
-                      Text(
-                        '모잇에서 쓰일\n사용자님의 프로필을 입력해주세요!',
-                        style: AppTextStyles.heading2,
-                      ),
+                            // 타이틀
+                            Text(
+                              '모잇에서 쓰일\n사용자님의 프로필을 입력해주세요!',
+                              style: AppTextStyles.heading2,
+                            ),
 
-                      const SizedBox(height: 40),
+                            const SizedBox(height: 40),
+
+                            // 에러 메시지 표시
+                            if (authState.errorMessage != null) ...[
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  authState.errorMessage!,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: Colors.red.shade900,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
 
                       // 이름 입력
                       CustomTextField(
@@ -144,42 +187,42 @@ class _SignupDetailScreenState extends State<SignupDetailScreen> {
                         onChanged: (_) => setState(() {}),
                       ),
 
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
-              ),
-
-              // 다음 버튼 (하단 고정)
-              Container(
-                padding: const EdgeInsets.all(24.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: _isFormValid ? _handleNext : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isFormValid
-                          ? AppColors.primaryBlue
-                          : AppColors.buttonDisabled,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.buttonDisabled,
-                      disabledForegroundColor: AppColors.buttonTextDisabled,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
                       ),
-                      elevation: 0,
                     ),
-                    child: const Text(
-                      '다음',
-                      style: AppTextStyles.button,
+
+                    // 다음 버튼 (하단 고정)
+                    Container(
+                      padding: const EdgeInsets.all(24.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: _isFormValid ? _handleNext : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _isFormValid
+                                ? AppColors.primaryBlue
+                                : AppColors.buttonDisabled,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: AppColors.buttonDisabled,
+                            disabledForegroundColor: AppColors.buttonTextDisabled,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            '다음',
+                            style: AppTextStyles.button,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
       ),
     );
   }
