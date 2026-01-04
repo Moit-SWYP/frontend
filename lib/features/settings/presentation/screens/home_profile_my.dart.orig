@@ -5,29 +5,15 @@ import 'package:go_router/go_router.dart';
 import 'package:moit/core/constants/app_colors.dart';
 import 'package:moit/core/constants/app_text_styles.dart';
 import 'package:moit/core/services/kakao_login_service.dart';
-import 'package:moit/features/member/providers/member_provider.dart';
+import 'package:moit/features/member/providers/user_profile_provider.dart';
 
 /// 내 정보 화면
-class MyProfileScreen extends ConsumerStatefulWidget {
+class MyProfileScreen extends ConsumerWidget {
   const MyProfileScreen({super.key});
 
   @override
-  ConsumerState<MyProfileScreen> createState() => _MyProfileScreenState();
-}
-
-class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // 화면 진입 시 내 정보 로드
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(memberProvider.notifier).loadMyInfo();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final memberState = ref.watch(memberProvider);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userProfile = ref.watch(userProfileProvider);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -55,35 +41,12 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
           ),
         ),
       ),
-      body: memberState.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : memberState.errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        memberState.errorMessage!,
-                        style: AppTextStyles.body1.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          ref.read(memberProvider.notifier).loadMyInfo();
-                        },
-                        child: const Text('다시 시도'),
-                      ),
-                    ],
-                  ),
-                )
-              : SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               const SizedBox(height: 16),
 
               // 프로필 아바타 + Chip
@@ -102,21 +65,21 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
               // 이름
               _buildSectionTitle('이름'),
               const SizedBox(height: 16),
-              _buildReadOnlyField(memberState.nickname ?? ''),
+              _buildReadOnlyField(userProfile.displayName),
 
               const SizedBox(height: 16),
 
               // 생년월일
               _buildSectionTitle('생년월일'),
               const SizedBox(height: 16),
-              _buildReadOnlyField(memberState.birthDate?.replaceAll('-', '.') ?? ''),
+              _buildReadOnlyField(userProfile.profile?.birthDate.replaceAll('-', '.') ?? ''),
 
               const SizedBox(height: 16),
 
               // 성별
               _buildSectionTitle('성별'),
               const SizedBox(height: 16),
-              _buildReadOnlyField(memberState.genderText ?? ''),
+              _buildReadOnlyField(userProfile.profile?.genderText ?? ''),
 
               const SizedBox(height: 16),
 
@@ -150,10 +113,10 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
               ),
 
               const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
-                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -332,9 +295,6 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
           try {
             // 카카오 SDK 로그아웃
             await KakaoLoginService.logout();
-
-            // MemberProvider 초기화
-            ref.read(memberProvider.notifier).clearMemberInfo();
 
             debugPrint('로그아웃 성공');
 

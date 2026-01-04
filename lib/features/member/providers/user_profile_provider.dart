@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moit/features/member/data/clients/member_client.dart';
 import 'package:moit/features/member/providers/user_profile_state.dart';
@@ -52,6 +53,23 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
       );
 
       print('👤 [UserProfile] 상태 업데이트 완료 - displayName: ${state.displayName}');
+    } on DioException catch (e, stackTrace) {
+      print('❌ [UserProfile] 프로필 로드 실패 (DioException): $e');
+      print('❌ [UserProfile] StackTrace: $stackTrace');
+
+      // 401 에러이거나 AUTH_EXPIRED 에러인 경우 - 인증 실패로 간주
+      if (e.response?.statusCode == 401 || e.error == 'AUTH_EXPIRED') {
+        print('🚨 [UserProfile] 인증 만료 - 프로필 초기화');
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'AUTH_EXPIRED', // 인증 만료 표시
+        );
+      } else {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: '프로필을 불러오는데 실패했습니다.',
+        );
+      }
     } catch (e, stackTrace) {
       print('❌ [UserProfile] 프로필 로드 실패: $e');
       print('❌ [UserProfile] StackTrace: $stackTrace');

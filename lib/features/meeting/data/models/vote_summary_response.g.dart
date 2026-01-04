@@ -20,11 +20,23 @@ Map<String, dynamic> _$DateSummaryToJson(DateSummary instance) =>
       'votedDates': instance.votedDates,
     };
 
+VotedTimeResponse _$VotedTimeResponseFromJson(Map<String, dynamic> json) =>
+    VotedTimeResponse(
+      time: json['time'] as String,
+      count: (json['count'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$VotedTimeResponseToJson(VotedTimeResponse instance) =>
+    <String, dynamic>{
+      'time': instance.time,
+      'count': instance.count,
+    };
+
 TimeSummary _$TimeSummaryFromJson(Map<String, dynamic> json) => TimeSummary(
       topTimes:
           (json['topTimes'] as List<dynamic>).map((e) => e as String).toList(),
       votedTimes: (json['votedTimes'] as List<dynamic>)
-          .map((e) => e as String)
+          .map((e) => VotedTimeResponse.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
 

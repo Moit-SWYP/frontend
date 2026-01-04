@@ -70,11 +70,6 @@ class SettingsScreen extends ConsumerWidget {
                       context.push('/settings/notifications');
                     },
                   ),
-                  const SizedBox(height: 12),
-                  SettingsMenuItem(
-                    title: '로그아웃',
-                    onTap: () => _showLogoutDialog(context, ref),
-                  ),
                 ],
               ),
 
@@ -187,83 +182,6 @@ class SettingsScreen extends ConsumerWidget {
           ],
         ),
       ],
-    );
-  }
-
-  /// 로그아웃 확인 다이얼로그
-  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            '로그아웃',
-            style: TextStyle(
-              fontSize: 18,
-              fontFamily: 'Pretendard',
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          content: const Text(
-            '정말 로그아웃하시겠습니까?',
-            style: TextStyle(
-              fontSize: 14,
-              fontFamily: 'Pretendard',
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-              child: Text(
-                '취소',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
-                  fontFamily: 'Pretendard',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(dialogContext).pop();
-
-                // 로그아웃 실행
-                print('🔄 [Settings] 로그아웃 버튼 클릭');
-                await ref.read(authProvider.notifier).logout();
-
-                // 로그인 화면으로 이동 (모든 스택 제거)
-                if (context.mounted) {
-                  context.go('/login');
-
-                  // 로그아웃 완료 메시지
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('로그아웃되었습니다.'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                }
-              },
-              child: const Text(
-                '로그아웃',
-                style: TextStyle(
-                  color: Color(0xFFFF3B30), // 빨간색
-                  fontSize: 14,
-                  fontFamily: 'Pretendard',
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }

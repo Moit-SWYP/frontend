@@ -70,6 +70,7 @@ class MeetingBriefWithParticipants {
   final String title;
   final MeetingStatus status;
   final String? date; // yyyy-MM-dd format
+  @JsonKey(defaultValue: [])
   final List<ParticipantInfo> participants;
 
   MeetingBriefWithParticipants({
@@ -127,7 +128,9 @@ class MeetingBriefWithParticipants {
 /// 홈 화면 응답
 @JsonSerializable()
 class HomeResponse {
+  @JsonKey(defaultValue: [])
   final List<MeetingBriefWithParticipants> homeMeetings;
+  @JsonKey(defaultValue: [])
   final List<MeetingBrief> waitingMeetings;
 
   HomeResponse({

@@ -20,11 +20,28 @@ class DateSummary {
   Map<String, dynamic> toJson() => _$DateSummaryToJson(this);
 }
 
+/// 투표된 시간과 득표 수
+@JsonSerializable()
+class VotedTimeResponse {
+  final String time; // HH:mm 형식
+  final int count; // 득표 수
+
+  VotedTimeResponse({
+    required this.time,
+    required this.count,
+  });
+
+  factory VotedTimeResponse.fromJson(Map<String, dynamic> json) =>
+      _$VotedTimeResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$VotedTimeResponseToJson(this);
+}
+
 /// 시간 투표 요약
 @JsonSerializable()
 class TimeSummary {
   final List<String> topTimes; // 최다 득표 시간 리스트
-  final List<String> votedTimes; // 내가 투표한 시간 리스트
+  final List<VotedTimeResponse> votedTimes; // 투표된 시간과 득표 수 리스트
 
   TimeSummary({
     required this.topTimes,

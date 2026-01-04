@@ -47,9 +47,10 @@ MeetingBriefWithParticipants _$MeetingBriefWithParticipantsFromJson(
       title: json['title'] as String,
       status: $enumDecode(_$MeetingStatusEnumMap, json['status']),
       date: json['date'] as String?,
-      participants: (json['participants'] as List<dynamic>)
-          .map((e) => ParticipantInfo.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      participants: (json['participants'] as List<dynamic>?)
+              ?.map((e) => ParticipantInfo.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$MeetingBriefWithParticipantsToJson(
@@ -75,13 +76,15 @@ const _$MeetingStatusEnumMap = {
 };
 
 HomeResponse _$HomeResponseFromJson(Map<String, dynamic> json) => HomeResponse(
-      homeMeetings: (json['homeMeetings'] as List<dynamic>)
-          .map((e) =>
-              MeetingBriefWithParticipants.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      waitingMeetings: (json['waitingMeetings'] as List<dynamic>)
-          .map((e) => MeetingBrief.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      homeMeetings: (json['homeMeetings'] as List<dynamic>?)
+              ?.map((e) => MeetingBriefWithParticipants.fromJson(
+                  e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      waitingMeetings: (json['waitingMeetings'] as List<dynamic>?)
+              ?.map((e) => MeetingBrief.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$HomeResponseToJson(HomeResponse instance) =>

@@ -46,27 +46,60 @@ class AuthInterceptor extends Interceptor {
     if (err.response?.statusCode == 401) {
       final requestOptions = err.requestOptions;
 
-      // 토큰 재발급 요청이 실패한 경우는 재시도하지 않음
+      // 토큰 재발급 요청이 실패한 경우 - 즉시 강제 로그아웃
       if (requestOptions.path.contains('/api/auth/reissue')) {
-        logger.e('토큰 재발급 실패');
+        print('🚨 [AuthInterceptor] 토큰 재발급 실패 - 모든 토큰 삭제 및 강제 로그아웃');
+        logger.e('토큰 재발급 실패 - 강제 로그아웃 처리');
         await _tokenStorage.clearTokens();
-        return handler.reject(err);
+
+        // 401 에러를 그대로 전달하여 상위에서 처리하도록 함
+        return handler.reject(
+          DioException(
+            requestOptions: requestOptions,
+            response: err.response,
+            type: DioExceptionType.badResponse,
+            error: 'AUTH_EXPIRED', // 인증 만료 표시
+          ),
+        );
       }
 
       try {
-        // 토큰 재발급
+        // 토큰 재발급 시도
+        print('🔄 [AuthInterceptor] 토큰 재발급 시도');
         logger.i('토큰 재발급 시도');
         final newAccessToken = await _refreshToken();
 
         if (newAccessToken != null) {
+          print('✅ [AuthInterceptor] 토큰 재발급 성공 - 원래 요청 재시도');
           // 새 토큰으로 원래 요청 재시도
           requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
           final response = await dio.fetch(requestOptions);
           return handler.resolve(response);
+        } else {
+          // 재발급 실패 - 강제 로그아웃
+          print('❌ [AuthInterceptor] 토큰 재발급 실패 - 모든 토큰 삭제');
+          await _tokenStorage.clearTokens();
+          return handler.reject(
+            DioException(
+              requestOptions: requestOptions,
+              response: err.response,
+              type: DioExceptionType.badResponse,
+              error: 'AUTH_EXPIRED',
+            ),
+          );
         }
       } catch (e) {
+        print('❌ [AuthInterceptor] 토큰 재발급 중 에러: $e');
         logger.e('토큰 재발급 중 에러: $e');
         await _tokenStorage.clearTokens();
+        return handler.reject(
+          DioException(
+            requestOptions: requestOptions,
+            response: err.response,
+            type: DioExceptionType.badResponse,
+            error: 'AUTH_EXPIRED',
+          ),
+        );
       }
     }
 

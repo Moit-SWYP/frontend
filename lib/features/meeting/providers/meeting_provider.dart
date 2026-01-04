@@ -1,7 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moit/features/meeting/data/clients/meeting_client.dart';
 import 'package:moit/features/meeting/data/models/meeting_brief.dart';
 import 'package:moit/features/meeting/data/models/meeting_create_request.dart';
+import 'package:moit/features/meeting/data/models/meeting_update_request.dart';
 
 /// Meeting 리스트 상태
 class MeetingState {
@@ -123,6 +125,169 @@ class MeetingNotifier extends StateNotifier<MeetingState> {
       print('❌ [Meeting] 모임 상세 조회 실패: $e');
       print('❌ [Meeting] StackTrace: $stackTrace');
       return null;
+    }
+  }
+
+  /// 모임 삭제 (HOST 전용)
+  Future<bool> deleteMeeting(int meetingId) async {
+    print('🔄 [Meeting] 모임 삭제 시작: $meetingId');
+
+    try {
+      await _meetingClient.deleteMeeting(meetingId);
+
+      print('✅ [Meeting] 모임 삭제 성공');
+
+      // 삭제 후 리스트 새로고침
+      await loadMeetings();
+
+      return true;
+    } catch (e, stackTrace) {
+      print('❌ [Meeting] 모임 삭제 실패: $e');
+      print('❌ [Meeting] StackTrace: $stackTrace');
+
+      state = state.copyWith(
+        errorMessage: '모임 삭제에 실패했습니다.',
+      );
+
+      return false;
+    }
+  }
+
+  /// 모임 탈퇴 (MEMBER 전용)
+  Future<bool> quitMeeting(int meetingId) async {
+    print('🔄 [Meeting] 모임 탈퇴 시작: $meetingId');
+
+    try {
+      await _meetingClient.quitMeeting(meetingId);
+
+      print('✅ [Meeting] 모임 탈퇴 성공');
+
+      // 탈퇴 후 리스트 새로고침
+      await loadMeetings();
+
+      return true;
+    } catch (e, stackTrace) {
+      print('❌ [Meeting] 모임 탈퇴 실패: $e');
+      print('❌ [Meeting] StackTrace: $stackTrace');
+
+      state = state.copyWith(
+        errorMessage: '모임 탈퇴에 실패했습니다.',
+      );
+
+      return false;
+    }
+  }
+
+  /// 초대 링크 생성 및 조회
+  Future<String?> getInvitationLink(int meetingId) async {
+    print('🔄 [Meeting] 초대 링크 생성: $meetingId');
+
+    try {
+      final invitationResponse = await _meetingClient.getInvitationLink(meetingId);
+
+      print('✅ [Meeting] 초대 링크 생성 성공');
+      print('  - inviteToken: ${invitationResponse.inviteToken}');
+      print('  - inviteLink: ${invitationResponse.inviteLink}');
+
+      return invitationResponse.inviteLink;
+    } catch (e, stackTrace) {
+      print('❌ [Meeting] 초대 링크 생성 실패: $e');
+      print('❌ [Meeting] StackTrace: $stackTrace');
+
+      state = state.copyWith(
+        errorMessage: '초대 링크 생성에 실패했습니다.',
+      );
+
+      return null;
+    }
+  }
+
+  /// 초대 링크로 모임 참여
+  Future<bool> joinMeetingFromLink(String inviteToken) async {
+    print('🔄 [Meeting] 초대 링크로 모임 참여: $inviteToken');
+
+    try {
+      await _meetingClient.joinMeetingFromLink(inviteToken);
+
+      print('✅ [Meeting] 모임 참여 성공');
+
+      // 참여 후 리스트 새로고침
+      await loadMeetings();
+
+      return true;
+    } catch (e, stackTrace) {
+      print('❌ [Meeting] 모임 참여 실패: $e');
+      print('❌ [Meeting] StackTrace: $stackTrace');
+
+      // 에러 메시지 설정
+      String errorMessage = '모임 참여에 실패했습니다.';
+      if (e is DioException) {
+        if (e.response?.statusCode == 409) {
+          errorMessage = '이미 참여중인 모임입니다.';
+        } else if (e.response?.statusCode == 404) {
+          errorMessage = '존재하지 않는 모임입니다.';
+        }
+      }
+
+      state = state.copyWith(errorMessage: errorMessage);
+
+      return false;
+    }
+  }
+
+  /// 대기 모임 리스트 조회
+  Future<List<MeetingBrief>> getWaitingMeetings({
+    int page = 0,
+    int size = 20,
+  }) async {
+    print('🔄 [Meeting] 대기 모임 리스트 조회: page=$page, size=$size');
+
+    try {
+      final meetings = await _meetingClient.getWaitingMeetings(
+        page: page,
+        size: size,
+      );
+
+      print('✅ [Meeting] 대기 모임 ${meetings.length}개 조회 성공');
+      for (var meeting in meetings) {
+        print('  - ${meeting.title} (${meeting.statusText})');
+      }
+
+      return meetings;
+    } catch (e, stackTrace) {
+      print('❌ [Meeting] 대기 모임 조회 실패: $e');
+      print('❌ [Meeting] StackTrace: $stackTrace');
+
+      state = state.copyWith(
+        errorMessage: '대기 모임 목록을 불러오는데 실패했습니다.',
+      );
+
+      return [];
+    }
+  }
+
+  /// 모임 수정
+  Future<bool> updateMeeting(int meetingId, MeetingUpdateRequest request) async {
+    print('🔄 [Meeting] 모임 수정 시작: $meetingId');
+
+    try {
+      await _meetingClient.updateMeeting(meetingId, request);
+
+      print('✅ [Meeting] 모임 수정 성공');
+
+      // 수정 후 리스트 새로고침
+      await loadMeetings();
+
+      return true;
+    } catch (e, stackTrace) {
+      print('❌ [Meeting] 모임 수정 실패: $e');
+      print('❌ [Meeting] StackTrace: $stackTrace');
+
+      state = state.copyWith(
+        errorMessage: '모임 수정에 실패했습니다.',
+      );
+
+      return false;
     }
   }
 

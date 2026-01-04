@@ -27,24 +27,54 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// 앱 시작 시 로그인 상태 확인
   Future<void> _checkLoginStatus() async {
+    print('🔍 [Auth] 로그인 상태 확인 시작');
+
     final isLoggedIn = await _socialLoginService.isLoggedIn();
-    if (isLoggedIn) {
-      final accessToken = await _tokenStorage.getAccessToken();
-      final refreshToken = await _tokenStorage.getRefreshToken();
+    if (!isLoggedIn) {
+      print('❌ [Auth] 소셜 로그인 상태 없음 - 토큰 삭제');
+      await _tokenStorage.clearTokens();
+      state = const AuthState();
+      return;
+    }
 
-      if (accessToken != null && refreshToken != null) {
-        state = state.copyWith(
-          isAuthenticated: true,
-          tokens: AuthTokens(
-            accessToken: accessToken,
-            refreshToken: refreshToken,
-          ),
-        );
+    final accessToken = await _tokenStorage.getAccessToken();
+    final refreshToken = await _tokenStorage.getRefreshToken();
 
-        // 🔄 로그인 상태면 프로필 자동 로드
-        print('🔄 [Auth] 저장된 토큰 발견 → 프로필 자동 로드');
-        await _ref.read(userProfileProvider.notifier).loadProfile();
-      }
+    // 토큰이 없으면 깔끔하게 초기화
+    if (accessToken == null || refreshToken == null) {
+      print('❌ [Auth] 저장된 토큰 없음 - 상태 초기화');
+      await _tokenStorage.clearTokens();
+      state = const AuthState();
+      return;
+    }
+
+    print('✅ [Auth] 저장된 토큰 발견 - 인증 상태로 설정');
+    state = state.copyWith(
+      isAuthenticated: true,
+      tokens: AuthTokens(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      ),
+    );
+
+    // 🔄 프로필 로드로 토큰 유효성 검증
+    print('🔄 [Auth] 프로필 로드로 토큰 유효성 검증 시작');
+    await _ref.read(userProfileProvider.notifier).loadProfile();
+
+    // 프로필 로드 결과 확인
+    final profileState = _ref.read(userProfileProvider);
+
+    // AUTH_EXPIRED 에러 발생 시 - 토큰 무효화 및 로그아웃 처리
+    if (profileState.errorMessage == 'AUTH_EXPIRED') {
+      print('🚨 [Auth] 토큰 만료 감지 - 강제 로그아웃 처리');
+      await _tokenStorage.clearTokens();
+      _ref.read(userProfileProvider.notifier).clearProfile();
+      state = const AuthState();
+      print('✅ [Auth] 강제 로그아웃 완료 - 로그인 화면으로 이동');
+    } else if (profileState.hasProfile) {
+      print('✅ [Auth] 토큰 유효 - 프로필 로드 성공');
+    } else if (profileState.errorMessage != null) {
+      print('⚠️ [Auth] 프로필 로드 실패: ${profileState.errorMessage}');
     }
   }
 
