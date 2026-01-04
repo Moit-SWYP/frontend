@@ -23,7 +23,21 @@ class MeetingClient {
       print('🌐 [MeetingClient] Response Status: ${response.statusCode}');
       print('🌐 [MeetingClient] Response Data: ${response.data}');
 
-      // 응답이 배열인 경우
+      // 공통 응답 형식 처리: {code, message, data}
+      if (response.data is Map<String, dynamic>) {
+        final dataField = response.data['data'];
+
+        if (dataField is List) {
+          final meetings = (dataField as List)
+              .map((json) => MeetingBrief.fromJson(json as Map<String, dynamic>))
+              .toList();
+
+          print('✅ [MeetingClient] 모임 ${meetings.length}개 조회 성공');
+          return meetings;
+        }
+      }
+
+      // 레거시: 응답이 직접 배열인 경우
       if (response.data is List) {
         final meetings = (response.data as List)
             .map((json) => MeetingBrief.fromJson(json as Map<String, dynamic>))
@@ -34,6 +48,7 @@ class MeetingClient {
       }
 
       print('❌ [MeetingClient] 예상치 못한 응답 형식');
+      print('❌ [MeetingClient] response.data type: ${response.data.runtimeType}');
       return [];
     } catch (e, stackTrace) {
       print('❌ [MeetingClient] getAllMeetings 에러: $e');
@@ -54,7 +69,9 @@ class MeetingClient {
   /// POST /api/meetings
   ///
   /// Authorization 헤더에 Access Token 필요
-  Future<void> createMeeting(MeetingCreateRequest request) async {
+  ///
+  /// 생성된 모임의 ID를 반환합니다.
+  Future<int?> createMeeting(MeetingCreateRequest request) async {
     try {
       print('🌐 [MeetingClient] POST /api/meetings');
       print('🌐 [MeetingClient] Request Data: ${request.toJson()}');
@@ -66,7 +83,19 @@ class MeetingClient {
 
       print('🌐 [MeetingClient] Response Status: ${response.statusCode}');
       print('🌐 [MeetingClient] Response Data: ${response.data}');
-      print('✅ [MeetingClient] 모임 생성 성공');
+
+      // 공통 응답 형식에서 meetingId 추출: {code, message, data: {meetingId: ...}}
+      if (response.data is Map<String, dynamic>) {
+        final dataField = response.data['data'];
+        if (dataField is Map<String, dynamic> && dataField.containsKey('meetingId')) {
+          final meetingId = dataField['meetingId'] as int;
+          print('✅ [MeetingClient] 모임 생성 성공 - meetingId: $meetingId');
+          return meetingId;
+        }
+      }
+
+      print('✅ [MeetingClient] 모임 생성 성공 (meetingId 없음)');
+      return null;
     } catch (e, stackTrace) {
       print('❌ [MeetingClient] createMeeting 에러: $e');
       print('❌ [MeetingClient] StackTrace: $stackTrace');

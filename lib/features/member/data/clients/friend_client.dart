@@ -22,7 +22,14 @@ class FriendClient {
       print('🌐 [FriendClient] Response Status: ${response.statusCode}');
       print('🌐 [FriendClient] Response Data: ${response.data}');
 
-      final friendsResponse = MyFriendsResponse.fromJson(response.data);
+      // 공통 응답 형식 처리: {code, message, data: {friends: []}}
+      final dataField = response.data is Map<String, dynamic>
+          ? response.data['data']
+          : response.data;
+
+      final friendsResponse = MyFriendsResponse.fromJson(
+        dataField is Map<String, dynamic> ? dataField : {'friends': []}
+      );
 
       print('✅ [FriendClient] 친구 ${friendsResponse.friendCount}명 조회 성공');
       for (var friend in friendsResponse.friends) {
@@ -60,7 +67,14 @@ class FriendClient {
       print('🌐 [FriendClient] Response Status: ${response.statusCode}');
       print('🌐 [FriendClient] Response Data: ${response.data}');
 
-      final groupsResponse = MyFriendGroupsResponse.fromJson(response.data);
+      // 공통 응답 형식 처리: {code, message, data: {...}}
+      final dataField = response.data is Map<String, dynamic>
+          ? response.data['data']
+          : response.data;
+
+      final groupsResponse = MyFriendGroupsResponse.fromJson(
+        dataField is Map<String, dynamic> ? dataField : {'friendGroups': []}
+      );
 
       print('✅ [FriendClient] 친구 그룹 ${groupsResponse.groupCount}개 조회 성공');
       for (var group in groupsResponse.friendGroups) {

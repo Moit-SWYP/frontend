@@ -25,30 +25,16 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
-      final response = await _memberClient.getMyProfile();
-
-      print('👤 [UserProfile] API 응답 받음 - code: ${response.code}, message: ${response.message}');
-      print('👤 [UserProfile] API 응답 data: ${response.data}');
-
-      if (response.data == null) {
-        print('❌ [UserProfile] 응답 데이터가 null입니다!');
-        state = state.copyWith(
-          isLoading: false,
-          errorMessage: '프로필 데이터가 없습니다.',
-        );
-        return;
-      }
-
-      final profile = response.data!;
+      final memberInfo = await _memberClient.getMyInfo();
 
       print('✅ [UserProfile] 프로필 로드 성공!');
-      print('  - nickname: ${profile.nickname}');
-      print('  - email: ${profile.email}');
-      print('  - gender: ${profile.gender}');
-      print('  - birthDate: ${profile.birthDate}');
+      print('  - nickname: ${memberInfo.nickname}');
+      print('  - email: ${memberInfo.email}');
+      print('  - gender: ${memberInfo.gender}');
+      print('  - birthDate: ${memberInfo.birthDate}');
 
       state = state.copyWith(
-        profile: profile,
+        profile: memberInfo,
         isLoading: false,
       );
 

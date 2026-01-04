@@ -7,6 +7,7 @@ part 'social_account.g.dart';
 /// 회원에 연동된 소셜 로그인 계정
 @JsonSerializable()
 class SocialAccount {
+  @JsonKey(name: 'socialProvider')
   final String provider; // 소셜 제공자 (KAKAO, NAVER)
 
   SocialAccount({

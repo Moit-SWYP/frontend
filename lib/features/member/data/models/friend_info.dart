@@ -38,10 +38,11 @@ class FriendInfo {
 /// GET /api/members/friendships
 @JsonSerializable()
 class MyFriendsResponse {
+  @JsonKey(defaultValue: [])
   final List<FriendInfo> friends; // 친구 목록
 
   MyFriendsResponse({
-    required this.friends,
+    this.friends = const [],
   });
 
   factory MyFriendsResponse.fromJson(Map<String, dynamic> json) =>

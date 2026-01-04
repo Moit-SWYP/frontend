@@ -83,18 +83,29 @@ class MeetingNotifier extends StateNotifier<MeetingState> {
   }
 
   /// 모임 생성
-  Future<bool> createMeeting(MeetingCreateRequest request) async {
+  ///
+  /// 생성된 모임의 ID를 반환합니다. 실패 시 null 반환.
+  Future<int?> createMeeting(MeetingCreateRequest request) async {
     print('🔄 [Meeting] 모임 생성 시작: ${request.title}');
 
     try {
-      await _meetingClient.createMeeting(request);
+      final meetingId = await _meetingClient.createMeeting(request);
 
-      print('✅ [Meeting] 모임 생성 성공');
+      if (meetingId != null) {
+        print('✅ [Meeting] 모임 생성 성공 - meetingId: $meetingId');
 
-      // 생성 후 리스트 새로고침
-      await loadMeetings();
+        // 생성 후 리스트 새로고침
+        await loadMeetings();
 
-      return true;
+        return meetingId;
+      } else {
+        print('⚠️ [Meeting] 모임 생성 성공했으나 ID를 받지 못함');
+
+        // 생성 후 리스트 새로고침
+        await loadMeetings();
+
+        return null;
+      }
     } catch (e, stackTrace) {
       print('❌ [Meeting] 모임 생성 실패: $e');
       print('❌ [Meeting] StackTrace: $stackTrace');
@@ -103,7 +114,7 @@ class MeetingNotifier extends StateNotifier<MeetingState> {
         errorMessage: '모임 생성에 실패했습니다.',
       );
 
-      return false;
+      return null;
     }
   }
 

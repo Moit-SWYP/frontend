@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:moit/features/home/presentation/screens/home_screen.dart';
 import 'package:moit/features/home/presentation/screens/calendar_placeholder_screen.dart';
-import 'package:moit/features/home/presentation/screens/friends_placeholder_screen.dart';
+import 'package:moit/features/home/presentation/screens/friends_screen.dart';
 
 /// 메인 탭 네비게이션 화면
 ///
@@ -21,7 +21,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
   static const List<Widget> _screens = [
     HomeScreen(), // 홈 화면 (모임 리스트 표시)
     CalendarPlaceholderScreen(),
-    FriendsPlaceholderScreen(),
+    FriendsScreen(), // 친구 목록 화면 (실제 데이터 표시)
   ];
 
   void _onItemTapped(int index) {

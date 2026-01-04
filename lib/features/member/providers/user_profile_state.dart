@@ -1,8 +1,8 @@
-import 'package:moit/features/member/data/models/member_profile.dart';
+import 'package:moit/features/member/data/models/member_info.dart';
 
 /// 사용자 프로필 상태
 class UserProfileState {
-  final MemberProfile? profile;
+  final MemberInfo? profile;
   final bool isLoading;
   final String? errorMessage;
 
@@ -22,7 +22,7 @@ class UserProfileState {
   String get displayEmail => profile?.email ?? '';
 
   UserProfileState copyWith({
-    MemberProfile? profile,
+    MemberInfo? profile,
     bool? isLoading,
     String? errorMessage,
   }) {

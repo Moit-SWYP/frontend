@@ -8,10 +8,10 @@ part of 'social_account.dart';
 
 SocialAccount _$SocialAccountFromJson(Map<String, dynamic> json) =>
     SocialAccount(
-      provider: json['provider'] as String,
+      provider: json['socialProvider'] as String,
     );
 
 Map<String, dynamic> _$SocialAccountToJson(SocialAccount instance) =>
     <String, dynamic>{
-      'provider': instance.provider,
+      'socialProvider': instance.provider,
     };

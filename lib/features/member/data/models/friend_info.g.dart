@@ -24,9 +24,10 @@ Map<String, dynamic> _$FriendInfoToJson(FriendInfo instance) =>
 
 MyFriendsResponse _$MyFriendsResponseFromJson(Map<String, dynamic> json) =>
     MyFriendsResponse(
-      friends: (json['friends'] as List<dynamic>)
-          .map((e) => FriendInfo.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      friends: (json['friends'] as List<dynamic>?)
+              ?.map((e) => FriendInfo.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$MyFriendsResponseToJson(MyFriendsResponse instance) =>

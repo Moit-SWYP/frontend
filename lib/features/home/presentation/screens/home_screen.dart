@@ -36,6 +36,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     print('✅ [Home] Pull-to-refresh 완료');
   }
 
+  /// 오늘 날짜와 비교하여 D-day 계산
+  int? _calculateDaysUntilMeeting(String? dateStr) {
+    if (dateStr == null) return null;
+
+    try {
+      final meetingDate = DateTime.parse(dateStr);
+      final today = DateTime.now();
+      final todayMidnight = DateTime(today.year, today.month, today.day);
+      final meetingMidnight =
+          DateTime(meetingDate.year, meetingDate.month, meetingDate.day);
+
+      return meetingMidnight.difference(todayMidnight).inDays;
+    } catch (e) {
+      print('❌ [HomeScreen] 날짜 파싱 실패: $dateStr');
+      return null;
+    }
+  }
+
+  /// 가장 가까운 모임 찾기 (날짜가 확정된 모임 중)
+  MeetingBriefWithParticipants? _findClosestMeeting(List<MeetingBriefWithParticipants> meetings) {
+    if (meetings.isEmpty) return null;
+
+    MeetingBriefWithParticipants? closestMeeting;
+    int? smallestDays;
+
+    for (final meeting in meetings) {
+      if (meeting.date == null) continue;
+
+      final daysUntil = _calculateDaysUntilMeeting(meeting.date);
+      if (daysUntil == null || daysUntil < 0) continue; // 과거 모임 제외
+
+      if (smallestDays == null || daysUntil < smallestDays) {
+        smallestDays = daysUntil;
+        closestMeeting = meeting;
+      }
+    }
+
+    return closestMeeting;
+  }
+
+  /// 인사말 메시지 생성
+  String _getGreetingMessage(MeetingBriefWithParticipants? closestMeeting) {
+    if (closestMeeting == null) {
+      return '모임을 만들어볼까요?';
+    }
+
+    final daysUntil = _calculateDaysUntilMeeting(closestMeeting.date);
+
+    if (daysUntil == null) {
+      return '즐거운 모임 되세요!';
+    } else if (daysUntil == 0) {
+      return '오늘은 모임이 있어요!';
+    } else if (daysUntil == 1) {
+      return '내일 모임이 있어요!';
+    } else {
+      return '모임이 ${daysUntil}일 남았어요!';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final homeState = ref.watch(homeProvider);
@@ -61,6 +120,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       });
     }
 
+    // 가장 가까운 모임 찾기
+    final closestMeeting = homeState.homeData != null
+        ? _findClosestMeeting(homeState.homeData!.homeMeetings)
+        : null;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -84,7 +148,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const SizedBox(height: 24),
 
                       // 인사말 섹션
-                      _buildGreetingSection(userProfile.displayName, homeState.totalMeetingCount),
+                      _buildGreetingSection(
+                        userProfile.displayName,
+                        _getGreetingMessage(closestMeeting),
+                      ),
 
                       const SizedBox(height: 24),
 
@@ -103,7 +170,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                       // 모임이 있을 때
                       else
-                        ..._buildMeetingContent(homeState),
+                        ..._buildMeetingContent(homeState, closestMeeting),
 
                       const SizedBox(height: 100), // 플로팅 버튼 공간 확보
                     ],
@@ -182,58 +249,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   /// 인사말 섹션
-  Widget _buildGreetingSection(String userName, int meetingCount) {
+  Widget _buildGreetingSection(String userName, String message) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // 좌측 인사말 텍스트
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // "수빈님,"
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  userName,
-                  style: const TextStyle(
-                    color: Color(0xFF111111), // txt-primary
-                    fontSize: 18,
-                    fontFamily: 'Pretendard',
-                    fontWeight: FontWeight.w700,
-                    height: 1.33,
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // "수빈님,"
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      userName,
+                      style: const TextStyle(
+                        color: Color(0xFF111111), // txt-primary
+                        fontSize: 18,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w700,
+                        height: 1.33,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-                Text(
-                  '님,',
-                  style: const TextStyle(
-                    color: Color(0xFF111111), // txt-primary
-                    fontSize: 18,
-                    fontFamily: 'Pretendard',
-                    fontWeight: FontWeight.w700,
-                    height: 1.33,
+                  const Text(
+                    '님,',
+                    style: TextStyle(
+                      color: Color(0xFF111111), // txt-primary
+                      fontSize: 18,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w700,
+                      height: 1.33,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            // 모임 개수에 따른 메시지
-            Text(
-              meetingCount == 0
-                  ? '모임을 만들어볼까요?'
-                  : '오늘도 즐거운 모임 되세요!',
-              style: const TextStyle(
-                color: Color(0xFF111111), // txt-primary
-                fontSize: 24,
-                fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w700,
-                height: 1.33,
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              // 동적 메시지
+              Text(
+                message,
+                style: const TextStyle(
+                  color: Color(0xFF111111), // txt-primary
+                  fontSize: 24,
+                  fontFamily: 'Pretendard',
+                  fontWeight: FontWeight.w700,
+                  height: 1.33,
+                ),
+              ),
+            ],
+          ),
         ),
+        const SizedBox(width: 12),
         // 우측 캐릭터 아이콘
         Transform(
           alignment: Alignment.center,
@@ -274,7 +345,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // 텍스트 영역
-          SizedBox(
+          const SizedBox(
             width: double.infinity,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -287,7 +358,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     '아직 만들어진 모임이 없어요',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: const Color(0xFF505050), // txt-secondary
+                      color: Color(0xFF505050), // txt-secondary
                       fontSize: 14,
                       fontFamily: 'Pretendard',
                       fontWeight: FontWeight.w700,
@@ -295,14 +366,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 SizedBox(
                   width: 296,
                   child: Text(
                     '아래 버튼을 눌러 첫 모임을 시작해보세요',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: const Color(0xFF999999), // color-disable
+                      color: Color(0xFF999999), // color-disable
                       fontSize: 13,
                       fontFamily: 'Pretendard',
                       fontWeight: FontWeight.w400,
@@ -335,7 +406,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
-              child: Row(
+              child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -360,18 +431,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// 모임 콘텐츠 (homeMeetings + waitingMeetings)
-  List<Widget> _buildMeetingContent(HomeState homeState) {
+  /// 모임 콘텐츠 (D-day 카드 + 친구들 모임)
+  List<Widget> _buildMeetingContent(HomeState homeState, MeetingBriefWithParticipants? closestMeeting) {
     final widgets = <Widget>[];
 
-    // homeMeetings 섹션
+    // D-day 카드 (가장 가까운 모임)
+    if (closestMeeting != null) {
+      widgets.add(_buildDDayCard(closestMeeting));
+      widgets.add(const SizedBox(height: 24));
+    }
+
+    // 친구들이 기다려요 섹션 (homeMeetings)
     if (homeState.hasHomeMeetings) {
       widgets.add(
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              '내 모임',
+              '친구들이 기다려요',
               style: TextStyle(
                 color: Color(0xFF111111),
                 fontSize: 16,
@@ -380,53 +457,280 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 height: 1.5,
               ),
             ),
-            const SizedBox(height: 12),
-            ...homeState.homeData!.homeMeetings.map((meeting) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildHomeMeetingCard(meeting),
-                )),
+            GestureDetector(
+              onTap: () {
+                // TODO: 전체 모임 목록 화면으로 이동
+                print('📋 [Home] 더보기 클릭');
+              },
+              child: const Text(
+                '더보기',
+                style: TextStyle(
+                  color: Color(0xFF999999),
+                  fontSize: 13,
+                  fontFamily: 'Pretendard',
+                  fontWeight: FontWeight.w400,
+                  height: 1.38,
+                ),
+              ),
+            ),
           ],
         ),
       );
+      widgets.add(const SizedBox(height: 12));
+
+      // 모임 카드들 (최대 3개)
+      final displayMeetings = homeState.homeData!.homeMeetings.take(3).toList();
+      for (final meeting in displayMeetings) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildMeetingCard(meeting),
+          ),
+        );
+      }
     }
 
-    // waitingMeetings 섹션
+    // 승인 대기 중 섹션 (waitingMeetings)
     if (homeState.hasWaitingMeetings) {
       if (homeState.hasHomeMeetings) {
         widgets.add(const SizedBox(height: 24));
       }
 
       widgets.add(
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '승인 대기 중',
-              style: TextStyle(
-                color: Color(0xFF111111),
-                fontSize: 16,
-                fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w700,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...homeState.homeData!.waitingMeetings.map((meeting) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildWaitingMeetingCard(meeting),
-                )),
-          ],
+        const Text(
+          '승인 대기 중',
+          style: TextStyle(
+            color: Color(0xFF111111),
+            fontSize: 16,
+            fontFamily: 'Pretendard',
+            fontWeight: FontWeight.w700,
+            height: 1.5,
+          ),
         ),
       );
+      widgets.add(const SizedBox(height: 12));
+
+      for (final meeting in homeState.homeData!.waitingMeetings) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildWaitingMeetingCard(meeting),
+          ),
+        );
+      }
     }
 
     return widgets;
   }
 
-  /// 홈 모임 카드 (참여자 정보 포함)
-  Widget _buildHomeMeetingCard(MeetingBriefWithParticipants meeting) {
-    final statusColor = _getStatusColor(meeting.status);
-    final statusBgColor = _getStatusBackgroundColor(meeting.status);
+  /// D-day 카드 (가장 가까운 모임)
+  Widget _buildDDayCard(MeetingBriefWithParticipants meeting) {
+    final daysUntil = _calculateDaysUntilMeeting(meeting.date);
+    final dDayText = daysUntil == null
+        ? ''
+        : daysUntil == 0
+            ? 'D-Day'
+            : 'D-${daysUntil}';
+
+    // 참여자 아바타 표시 (최대 4명)
+    final displayParticipants = meeting.participants.take(4).toList();
+    final remainingCount = meeting.participantCount - displayParticipants.length;
+
+    return GestureDetector(
+      onTap: () {
+        print('🔍 [Home] D-day 카드 클릭: ${meeting.meetingId} - ${meeting.title}');
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MeetingDetailScreen(
+              meeting: MeetingBrief(
+                meetingId: meeting.meetingId,
+                title: meeting.title,
+                status: meeting.status,
+                date: meeting.date,
+              ),
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: ShapeDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment(-1.00, -0.00),
+            end: Alignment(1, 0),
+            colors: [Color(0xFF1A49F1), Color(0xFF4A6FFF)],
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          shadows: const [
+            BoxShadow(
+              color: Color(0x3D1A49F1),
+              blurRadius: 20,
+              offset: Offset(0, 4),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // D-day 배지
+            if (dDayText.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: ShapeDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                child: Text(
+                  dDayText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w700,
+                    height: 1.43,
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 12),
+
+            // 모임 제목
+            Text(
+              meeting.title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontFamily: 'Pretendard',
+                fontWeight: FontWeight.w700,
+                height: 1.4,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+
+            const SizedBox(height: 12),
+
+            // 날짜 및 위치 (임시로 강남역 2번 출구 표시)
+            if (meeting.date != null)
+              Text(
+                '${DateFormatter.toKoreanDate(meeting.date)} · 강남역 2번 출구',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 14,
+                  fontFamily: 'Pretendard',
+                  fontWeight: FontWeight.w400,
+                  height: 1.43,
+                ),
+              ),
+
+            const SizedBox(height: 16),
+
+            // 참여자 아바타
+            Row(
+              children: [
+                // 참여자 아바타 스택
+                SizedBox(
+                  height: 32,
+                  child: Stack(
+                    children: [
+                      for (var i = 0; i < displayParticipants.length; i++)
+                        Positioned(
+                          left: i * 24.0,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFF1A49F1),
+                                width: 2,
+                              ),
+                            ),
+                            child: ClipOval(
+                              child: SvgPicture.asset(
+                                displayParticipants[i].characterIcon,
+                                width: 32,
+                                height: 32,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: displayParticipants.length * 24.0 + 12),
+
+                // 나머지 참여자 수
+                if (remainingCount > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: ShapeDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      '+$remainingCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w600,
+                        height: 1.38,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // 코스보기 버튼
+            GestureDetector(
+              onTap: () {
+                // TODO: 코스 상세 화면으로 이동
+                print('🗺️ [Home] 코스보기 클릭: ${meeting.meetingId}');
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: ShapeDecoration(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  '코스보기',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF1A49F1),
+                    fontSize: 14,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w700,
+                    height: 1.43,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 모임 카드 (친구들이 기다려요 섹션)
+  Widget _buildMeetingCard(MeetingBriefWithParticipants meeting) {
     final dateText = meeting.date != null
         ? DateFormatter.toKoreanDate(meeting.date)
         : null;
@@ -434,9 +738,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // 참여자 아바타 표시 (최대 4명)
     final displayParticipants = meeting.participants.take(4).toList();
     final remainingCount = meeting.participantCount - displayParticipants.length;
-
-    // 호스트 이름 가져오기
-    final hostName = meeting.host?.nickname ?? '호스트';
 
     return GestureDetector(
       onTap: () {
@@ -478,50 +779,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 fontWeight: FontWeight.w700,
                 height: 1.5,
               ),
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
 
-            // 상태 및 날짜
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: ShapeDecoration(
-                    color: statusBgColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  child: Text(
-                    meeting.statusText,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 12,
-                      fontFamily: 'Pretendard',
-                      fontWeight: FontWeight.w500,
-                      height: 1.33,
-                    ),
-                  ),
+            // 날짜 및 위치
+            if (dateText != null)
+              Text(
+                '$dateText · 강남역 2번 출구',
+                style: const TextStyle(
+                  color: Color(0xFF999999),
+                  fontSize: 13,
+                  fontFamily: 'Pretendard',
+                  fontWeight: FontWeight.w400,
+                  height: 1.38,
                 ),
-                const SizedBox(width: 8),
-                if (dateText != null)
-                  Text(
-                    dateText,
-                    style: const TextStyle(
-                      color: Color(0xFF999999),
-                      fontSize: 13,
-                      fontFamily: 'Pretendard',
-                      fontWeight: FontWeight.w400,
-                      height: 1.38,
-                    ),
-                  ),
-              ],
-            ),
+              ),
+
             const SizedBox(height: 12),
 
-            // 참여자 정보
+            // 참여자 아바타
             Row(
               children: [
                 // 참여자 아바타 스택
@@ -558,21 +836,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 SizedBox(width: displayParticipants.length * 18.0 + 8),
 
-                // 참여자 수 텍스트
-                Text(
-                  remainingCount > 0
-                      ? '$hostName님 외 $remainingCount명 참여 중'
-                      : meeting.participantCount > 1
-                          ? '$hostName님 외 ${meeting.participantCount - 1}명 참여 중'
-                          : '$hostName님 참여 중',
-                  style: const TextStyle(
-                    color: Color(0xFF666666),
-                    fontSize: 13,
-                    fontFamily: 'Pretendard',
-                    fontWeight: FontWeight.w400,
-                    height: 1.38,
+                // 나머지 참여자 수
+                if (remainingCount > 0)
+                  Text(
+                    '+$remainingCount',
+                    style: const TextStyle(
+                      color: Color(0xFF666666),
+                      fontSize: 13,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w400,
+                      height: 1.38,
+                    ),
                   ),
-                ),
               ],
             ),
           ],
@@ -581,7 +856,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// 대기 중인 모임 카드 (참여자 정보 없음)
+  /// 대기 중인 모임 카드
   Widget _buildWaitingMeetingCard(MeetingBrief meeting) {
     final statusColor = _getStatusColor(meeting.status);
     final statusBgColor = _getStatusBackgroundColor(meeting.status);
@@ -732,11 +1007,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             decoration: BoxDecoration(
               color: const Color(0xFF111111), // txt-primary (검은색 배경)
               borderRadius: BorderRadius.circular(30),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
-                  color: const Color(0x1A000000),
+                  color: Color(0x1A000000),
                   blurRadius: 12,
-                  offset: const Offset(0, 2),
+                  offset: Offset(0, 2),
                   spreadRadius: 0,
                 ),
               ],
@@ -766,14 +1041,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Container(
               width: 60,
               height: 60,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A49F1), // main050
+              decoration: const BoxDecoration(
+                color: Color(0xFF1A49F1), // main050
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0x3D000000),
+                    color: Color(0x3D000000),
                     blurRadius: 12,
-                    offset: const Offset(0, 2),
+                    offset: Offset(0, 2),
                     spreadRadius: 0,
                   ),
                 ],

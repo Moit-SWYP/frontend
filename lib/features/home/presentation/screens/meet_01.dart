@@ -37,24 +37,25 @@ class _Meet01ScreenState extends ConsumerState<Meet01Screen> {
     try {
       // API 호출
       final request = MeetingCreateRequest(title: meetingName);
-      final success = await ref.read(meetingProvider.notifier).createMeeting(request);
+      final meetingId = await ref.read(meetingProvider.notifier).createMeeting(request);
 
       if (!mounted) return;
 
-      if (success) {
-        print('✅ [Meet01] 모임 생성 성공 → 다음 화면으로 이동');
+      if (meetingId != null) {
+        print('✅ [Meet01] 모임 생성 성공 → 다음 화면으로 이동 (meetingId: $meetingId)');
 
-        // 성공 시 다음 화면으로 이동
+        // 성공 시 다음 화면으로 이동 (meetingId 전달)
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => Meet03Screen(
               meetingName: meetingName,
+              meetingId: meetingId,
             ),
           ),
         );
       } else {
-        print('❌ [Meet01] 모임 생성 실패');
+        print('❌ [Meet01] 모임 생성 실패 (meetingId null)');
 
         // 실패 시 SnackBar 표시
         ScaffoldMessenger.of(context).showSnackBar(
@@ -93,7 +94,12 @@ class _Meet01ScreenState extends ConsumerState<Meet01Screen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
         centerTitle: true,
         title: const Text(
           '새 약속 만들기',

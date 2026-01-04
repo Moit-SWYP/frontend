@@ -1,24 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:moit/features/home/presentation/screens/meet_07.dart';
+import 'package:moit/features/meeting/providers/meeting_provider.dart';
 
 /// 모임 만들기 3단계 - 친구 초대 화면
-class Meet03Screen extends StatefulWidget {
+class Meet03Screen extends ConsumerStatefulWidget {
   final String meetingName;
+  final int? meetingId; // 생성된 모임 ID
   final int initialTab;
 
   const Meet03Screen({
     super.key,
     required this.meetingName,
+    this.meetingId,
     this.initialTab = 0,
   });
 
   @override
-  State<Meet03Screen> createState() => _Meet03ScreenState();
+  ConsumerState<Meet03Screen> createState() => _Meet03ScreenState();
 }
 
-class _Meet03ScreenState extends State<Meet03Screen> {
+class _Meet03ScreenState extends ConsumerState<Meet03Screen> {
   late int _selectedTab; // 0: 초대, 1: 일정
 
   @override
@@ -28,6 +32,8 @@ class _Meet03ScreenState extends State<Meet03Screen> {
   }
   final TextEditingController _searchController = TextEditingController();
   bool _isLinkCopied = false;
+  bool _isGeneratingLink = false;
+  String? _invitationLink;
   final Set<String> _selectedFriends = {}; // 선택된 친구 ID들
 
   // 더미 데이터
@@ -562,7 +568,79 @@ class _Meet03ScreenState extends State<Meet03Screen> {
   }
 
   /// 링크 공유 다이얼로그
-  void _showLinkShareDialog() {
+  void _showLinkShareDialog() async {
+    // 모임 ID가 없으면 에러 표시
+    if (widget.meetingId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('모임 정보를 찾을 수 없습니다.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // 링크가 이미 생성되었으면 바로 다이얼로그 표시
+    if (_invitationLink != null) {
+      _showLinkDialog(_invitationLink!);
+      return;
+    }
+
+    // 링크 생성 중 표시
+    setState(() {
+      _isGeneratingLink = true;
+    });
+
+    try {
+      print('🔗 [Meet03] 초대 링크 생성 시작: meetingId=${widget.meetingId}');
+
+      final invitationLink = await ref
+          .read(meetingProvider.notifier)
+          .getInvitationLink(widget.meetingId!);
+
+      if (!mounted) return;
+
+      if (invitationLink != null) {
+        print('✅ [Meet03] 초대 링크 생성 성공: $invitationLink');
+        setState(() {
+          _invitationLink = invitationLink;
+          _isGeneratingLink = false;
+        });
+        _showLinkDialog(invitationLink);
+      } else {
+        print('❌ [Meet03] 초대 링크 생성 실패');
+        setState(() {
+          _isGeneratingLink = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('초대 링크 생성에 실패했습니다.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ [Meet03] 초대 링크 생성 에러: $e');
+      if (!mounted) return;
+
+      setState(() {
+        _isGeneratingLink = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('초대 링크 생성 중 오류가 발생했습니다.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// 링크 다이얼로그 표시
+  void _showLinkDialog(String linkUrl) {
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -604,7 +682,7 @@ class _Meet03ScreenState extends State<Meet03Screen> {
                   // 링크 박스
                   GestureDetector(
                     onTap: () {
-                      _copyLinkToClipboard();
+                      _copyLinkToClipboard(linkUrl);
                       setDialogState(() {
                         _isLinkCopied = true;
                       });
@@ -632,7 +710,7 @@ class _Meet03ScreenState extends State<Meet03Screen> {
                         children: [
                           Expanded(
                             child: Text(
-                              'http://약속링크 주소 url',
+                              linkUrl,
                               style: TextStyle(
                                 color: _isLinkCopied
                                     ? const Color(0xFF1A49F1) // main050 (복사 후)
@@ -642,6 +720,8 @@ class _Meet03ScreenState extends State<Meet03Screen> {
                                 fontWeight: FontWeight.w400,
                                 height: 1.50,
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -664,9 +744,8 @@ class _Meet03ScreenState extends State<Meet03Screen> {
   }
 
   /// 클립보드에 링크 복사
-  void _copyLinkToClipboard() {
-    const linkUrl = 'http://약속링크 주소 url';
-    Clipboard.setData(const ClipboardData(text: linkUrl));
+  void _copyLinkToClipboard(String linkUrl) {
+    Clipboard.setData(ClipboardData(text: linkUrl));
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
