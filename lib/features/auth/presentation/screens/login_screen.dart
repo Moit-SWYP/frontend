@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moit/core/constants/app_colors.dart';
 import 'package:moit/core/constants/app_text_styles.dart';
@@ -83,26 +84,19 @@ class LoginScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // 로고 영역 - Figma 명세: 200x100px, 상단 128px, 가운데 정렬
+        // 로고 영역 - Layer_1.svg 사용
         Padding(
           padding: const EdgeInsets.only(top: 128),
           child: Container(
-            width: 200,
-            height: 100,
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5), // Grey Color/grey030
-              borderRadius: BorderRadius.circular(8),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              '로고영역',
-              style: AppTextStyles.heading2.copyWith(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: Colors.black,
-              ),
-              textAlign: TextAlign.center,
+            width: 120,
+            height: 43.64,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(),
+            child: SvgPicture.asset(
+              'assets/icons/Layer_1.svg',
+              width: 120,
+              height: 43.64,
+              fit: BoxFit.contain,
             ),
           ),
         ),
@@ -135,24 +129,6 @@ class LoginScreen extends ConsumerWidget {
   Widget _buildOAuthButtons(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
-        // 임시 테스트 버튼 - 설정 화면으로 이동
-        GestureDetector(
-          onTap: () {
-            context.push('/settings');
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              'HOME_PROFILE',
-              style: AppTextStyles.button.copyWith(
-                color: AppColors.primaryBlue,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-
         // 카카오 로그인
         OAuthButton.kakao(
           onPressed: () async {

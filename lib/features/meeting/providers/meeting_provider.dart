@@ -84,36 +84,66 @@ class MeetingNotifier extends StateNotifier<MeetingState> {
 
   /// 모임 생성
   ///
-  /// 생성된 모임의 ID를 반환합니다. 실패 시 null 반환.
+  /// 생성된 모임의 ID를 반환합니다.
+  /// 서버 응답에서 ID를 받지 못한 경우, 목록을 다시 불러와서 방금 생성된 모임의 ID를 찾아 반환합니다.
   Future<int?> createMeeting(MeetingCreateRequest request) async {
-    print('🔄 [Meeting] 모임 생성 시작: ${request.title}');
+    print('');
+    print('══════════════════════════════════════════════════');
+    print('🎯 [MeetingProvider] 모임 생성 프로세스 시작: ${request.title}');
+    print('══════════════════════════════════════════════════');
 
     try {
+      print('📤 [MeetingProvider] 1단계: POST 요청 호출 (createMeeting)');
       final meetingId = await _meetingClient.createMeeting(request);
 
+      // 응답에서 ID를 받은 경우
       if (meetingId != null) {
-        print('✅ [Meeting] 모임 생성 성공 - meetingId: $meetingId');
+        print('✅ [MeetingProvider] 2단계: POST 성공 - meetingId: $meetingId');
+        print('📥 [MeetingProvider] 3단계: 목록 새로고침 호출 (loadMeetings)');
 
         // 생성 후 리스트 새로고침
         await loadMeetings();
 
+        print('✅ [MeetingProvider] 모임 생성 프로세스 완료');
+        print('══════════════════════════════════════════════════');
+        print('');
         return meetingId;
-      } else {
-        print('⚠️ [Meeting] 모임 생성 성공했으나 ID를 받지 못함');
-
-        // 생성 후 리스트 새로고침
-        await loadMeetings();
-
-        return null;
       }
+
+      // 응답에서 ID를 받지 못한 경우 - 목록에서 찾기
+      print('⚠️ [MeetingProvider] 2단계: POST 성공했으나 응답에 ID 없음');
+      print('📥 [MeetingProvider] 3단계: 목록 새로고침하여 방금 생성된 모임 찾기');
+
+      // 생성 후 리스트 새로고침
+      await loadMeetings();
+
+      // 방법 1: 제목으로 찾기 (가장 확실)
+      final createdMeeting = state.meetings.firstWhere(
+        (meeting) => meeting.title == request.title,
+        orElse: () => state.meetings.isNotEmpty
+            ? state.meetings.first // 제목이 일치하는 게 없으면 가장 첫 번째 (최신) 모임
+            : throw Exception('생성된 모임을 찾을 수 없습니다.'),
+      );
+
+      print('✅ [MeetingProvider] 방금 생성된 모임 발견!');
+      print('   - meetingId: ${createdMeeting.meetingId}');
+      print('   - title: ${createdMeeting.title}');
+      print('   - 전체 모임 개수: ${state.meetings.length}개');
+      print('✅ [MeetingProvider] 모임 생성 프로세스 완료');
+      print('══════════════════════════════════════════════════');
+      print('');
+
+      return createdMeeting.meetingId;
     } catch (e, stackTrace) {
-      print('❌ [Meeting] 모임 생성 실패: $e');
-      print('❌ [Meeting] StackTrace: $stackTrace');
+      print('❌ [MeetingProvider] 모임 생성 실패: $e');
+      print('❌ [MeetingProvider] StackTrace: $stackTrace');
 
       state = state.copyWith(
         errorMessage: '모임 생성에 실패했습니다.',
       );
 
+      print('══════════════════════════════════════════════════');
+      print('');
       return null;
     }
   }
@@ -297,6 +327,39 @@ class MeetingNotifier extends StateNotifier<MeetingState> {
       state = state.copyWith(
         errorMessage: '모임 수정에 실패했습니다.',
       );
+
+      return false;
+    }
+  }
+
+  /// 모임 날짜 확정 (HOST 전용)
+  Future<bool> confirmMeeting(int meetingId) async {
+    print('🔄 [Meeting] 모임 날짜 확정 시작: $meetingId');
+
+    try {
+      await _meetingClient.confirmMeeting(meetingId);
+
+      print('✅ [Meeting] 모임 날짜 확정 성공');
+
+      // 확정 후 리스트 새로고침
+      await loadMeetings();
+
+      return true;
+    } catch (e, stackTrace) {
+      print('❌ [Meeting] 모임 날짜 확정 실패: $e');
+      print('❌ [Meeting] StackTrace: $stackTrace');
+
+      // 에러 메시지 설정
+      String errorMessage = '날짜 확정에 실패했습니다.';
+      if (e is DioException) {
+        if (e.response?.statusCode == 403) {
+          errorMessage = '호스트만 날짜를 확정할 수 있습니다.';
+        } else if (e.response?.statusCode == 400) {
+          errorMessage = '투표 데이터가 없거나 모임 상태가 올바르지 않습니다.';
+        }
+      }
+
+      state = state.copyWith(errorMessage: errorMessage);
 
       return false;
     }

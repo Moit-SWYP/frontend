@@ -16,12 +16,15 @@ class MeetingClient {
   /// Authorization 헤더에 Access Token 필요
   Future<List<MeetingBrief>> getAllMeetings() async {
     try {
-      print('🌐 [MeetingClient] GET /api/meetings/all');
+      print('');
+      print('───────────────────────────────────────────');
+      print('📋 [FETCH] GET /api/meetings/all 호출 시작');
+      print('───────────────────────────────────────────');
 
       final response = await _dioClient.get('/api/meetings/all');
 
-      print('🌐 [MeetingClient] Response Status: ${response.statusCode}');
-      print('🌐 [MeetingClient] Response Data: ${response.data}');
+      print('📋 [FETCH] Response Status: ${response.statusCode}');
+      print('📋 [FETCH] Response Data Type: ${response.data.runtimeType}');
 
       // 공통 응답 형식 처리: {code, message, data}
       if (response.data is Map<String, dynamic>) {
@@ -32,7 +35,9 @@ class MeetingClient {
               .map((json) => MeetingBrief.fromJson(json as Map<String, dynamic>))
               .toList();
 
-          print('✅ [MeetingClient] 모임 ${meetings.length}개 조회 성공');
+          print('✅ [FETCH] 모임 ${meetings.length}개 조회 성공');
+          print('───────────────────────────────────────────');
+          print('');
           return meetings;
         }
       }
@@ -43,22 +48,28 @@ class MeetingClient {
             .map((json) => MeetingBrief.fromJson(json as Map<String, dynamic>))
             .toList();
 
-        print('✅ [MeetingClient] 모임 ${meetings.length}개 조회 성공');
+        print('✅ [FETCH] 모임 ${meetings.length}개 조회 성공 (레거시)');
+        print('───────────────────────────────────────────');
+        print('');
         return meetings;
       }
 
-      print('❌ [MeetingClient] 예상치 못한 응답 형식');
-      print('❌ [MeetingClient] response.data type: ${response.data.runtimeType}');
+      print('❌ [FETCH] 예상치 못한 응답 형식');
+      print('❌ [FETCH] response.data type: ${response.data.runtimeType}');
+      print('───────────────────────────────────────────');
+      print('');
       return [];
     } catch (e, stackTrace) {
-      print('❌ [MeetingClient] getAllMeetings 에러: $e');
-      print('❌ [MeetingClient] StackTrace: $stackTrace');
+      print('❌ [FETCH] getAllMeetings 에러: $e');
+      print('❌ [FETCH] StackTrace: $stackTrace');
 
       if (e is DioException) {
-        print('❌ [MeetingClient] Status Code: ${e.response?.statusCode}');
-        print('❌ [MeetingClient] Response Data: ${e.response?.data}');
-        print('❌ [MeetingClient] Error Message: ${e.message}');
+        print('❌ [FETCH] Status Code: ${e.response?.statusCode}');
+        print('❌ [FETCH] Response Data: ${e.response?.data}');
+        print('❌ [FETCH] Error Message: ${e.message}');
       }
+      print('───────────────────────────────────────────');
+      print('');
 
       rethrow;
     }
@@ -73,38 +84,180 @@ class MeetingClient {
   /// 생성된 모임의 ID를 반환합니다.
   Future<int?> createMeeting(MeetingCreateRequest request) async {
     try {
-      print('🌐 [MeetingClient] POST /api/meetings');
-      print('🌐 [MeetingClient] Request Data: ${request.toJson()}');
+      print('');
+      print('═══════════════════════════════════════════');
+      print('🚀 [CREATE] POST /api/meetings 호출 시작');
+      print('═══════════════════════════════════════════');
+      print('🚀 [CREATE] Request Data: ${request.toJson()}');
 
       final response = await _dioClient.post(
         '/api/meetings',
         data: request.toJson(),
       );
 
-      print('🌐 [MeetingClient] Response Status: ${response.statusCode}');
-      print('🌐 [MeetingClient] Response Data: ${response.data}');
+      print('🚀 [CREATE] Response Status: ${response.statusCode}');
+      print('DEBUG_RAW_DATA: ${response.data}');
+      print('🚀 [CREATE] 응답 타입: ${response.data.runtimeType}');
 
-      // 공통 응답 형식에서 meetingId 추출: {code, message, data: {meetingId: ...}}
+      // 🔍 유연한 ID 추출 로직
+      int? meetingId;
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 케이스 1: response.data가 Map인 경우
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       if (response.data is Map<String, dynamic>) {
-        final dataField = response.data['data'];
-        if (dataField is Map<String, dynamic> && dataField.containsKey('meetingId')) {
-          final meetingId = dataField['meetingId'] as int;
-          print('✅ [MeetingClient] 모임 생성 성공 - meetingId: $meetingId');
-          return meetingId;
+        final responseMap = response.data as Map<String, dynamic>;
+
+        // 1-1. data 필드가 숫자인 경우: {code, message, data: 123}
+        if (responseMap.containsKey('data')) {
+          final dataField = responseMap['data'];
+          print('🔍 [CREATE] data 필드 발견: $dataField (타입: ${dataField.runtimeType})');
+
+          if (dataField is int) {
+            meetingId = dataField;
+            print('✅ [CREATE] data 필드가 직접 숫자: $meetingId');
+          } else if (dataField is String) {
+            // 문자열이면 숫자로 변환 시도
+            try {
+              meetingId = int.parse(dataField);
+              print('✅ [CREATE] data 문자열을 숫자로 변환: $meetingId');
+            } catch (e) {
+              print('⚠️ [CREATE] data 문자열 변환 실패: $dataField');
+            }
+          } else if (dataField is double) {
+            // 1826.5 같은 경우 대비
+            meetingId = dataField.toInt();
+            print('✅ [CREATE] data double을 int로 변환: $meetingId');
+          } else if (dataField is Map<String, dynamic>) {
+            // 1-2. data 필드가 객체인 경우: {code, message, data: {id: 123}}
+            final dataMap = dataField as Map<String, dynamic>;
+            print('🔍 [CREATE] data 필드가 객체: ${dataMap.keys.toList()}');
+
+            // id 키 찾기
+            if (dataMap.containsKey('id')) {
+              final idValue = dataMap['id'];
+              if (idValue is int) {
+                meetingId = idValue;
+              } else if (idValue is String) {
+                meetingId = int.tryParse(idValue);
+              } else if (idValue is double) {
+                meetingId = idValue.toInt();
+              }
+              print('✅ [CREATE] data.id 발견: $meetingId');
+            }
+            // meetingId 키 찾기
+            else if (dataMap.containsKey('meetingId')) {
+              final idValue = dataMap['meetingId'];
+              if (idValue is int) {
+                meetingId = idValue;
+              } else if (idValue is String) {
+                meetingId = int.tryParse(idValue);
+              } else if (idValue is double) {
+                meetingId = idValue.toInt();
+              }
+              print('✅ [CREATE] data.meetingId 발견: $meetingId');
+            }
+          }
+        }
+
+        // 1-3. 최상위에 id 또는 meetingId가 있는 경우
+        if (meetingId == null && responseMap.containsKey('id')) {
+          final idValue = responseMap['id'];
+          if (idValue is int) {
+            meetingId = idValue;
+          } else if (idValue is String) {
+            meetingId = int.tryParse(idValue);
+          } else if (idValue is double) {
+            meetingId = idValue.toInt();
+          }
+          print('✅ [CREATE] 최상위 id 발견: $meetingId');
+        }
+
+        if (meetingId == null && responseMap.containsKey('meetingId')) {
+          final idValue = responseMap['meetingId'];
+          if (idValue is int) {
+            meetingId = idValue;
+          } else if (idValue is String) {
+            meetingId = int.tryParse(idValue);
+          } else if (idValue is double) {
+            meetingId = idValue.toInt();
+          }
+          print('✅ [CREATE] 최상위 meetingId 발견: $meetingId');
+        }
+
+        // 1-4. 마지막 수단: 모든 값 순회하며 'id' 포함된 키 찾기
+        if (meetingId == null) {
+          print('🔍 [CREATE] 모든 키를 순회하며 ID 검색 시작...');
+          for (var entry in responseMap.entries) {
+            final key = entry.key.toLowerCase();
+            final value = entry.value;
+
+            if (key.contains('id')) {
+              print('🔍 [CREATE] id 포함 키 발견: $key = $value (${value.runtimeType})');
+
+              if (value is int) {
+                meetingId = value;
+                print('✅ [CREATE] $key에서 숫자 발견: $meetingId');
+                break;
+              } else if (value is String) {
+                meetingId = int.tryParse(value);
+                if (meetingId != null) {
+                  print('✅ [CREATE] $key 문자열을 숫자로 변환: $meetingId');
+                  break;
+                }
+              } else if (value is double) {
+                meetingId = value.toInt();
+                print('✅ [CREATE] $key double을 int로 변환: $meetingId');
+                break;
+              }
+            }
+          }
         }
       }
 
-      print('✅ [MeetingClient] 모임 생성 성공 (meetingId 없음)');
-      return null;
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 케이스 2: response.data가 직접 숫자인 경우
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      else if (response.data is int) {
+        meetingId = response.data as int;
+        print('✅ [CREATE] response.data가 직접 숫자: $meetingId');
+      } else if (response.data is double) {
+        meetingId = (response.data as double).toInt();
+        print('✅ [CREATE] response.data double을 int로 변환: $meetingId');
+      } else if (response.data is String) {
+        meetingId = int.tryParse(response.data as String);
+        print('✅ [CREATE] response.data 문자열을 숫자로 변환: $meetingId');
+      }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 최종 결과
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      if (meetingId != null) {
+        print('');
+        print('✅✅✅ [CREATE] 모임 생성 성공! meetingId: $meetingId ✅✅✅');
+        print('═══════════════════════════════════════════');
+        print('');
+        return meetingId;
+      } else {
+        print('');
+        print('⚠️⚠️⚠️ [CREATE] 응답에서 ID를 찾을 수 없음 (서버에는 생성됨) ⚠️⚠️⚠️');
+        print('📋 [CREATE] 전체 응답: ${response.data}');
+        print('📋 [CREATE] Provider에서 목록 조회로 ID를 찾을 예정');
+        print('═══════════════════════════════════════════');
+        print('');
+        return null;
+      }
     } catch (e, stackTrace) {
-      print('❌ [MeetingClient] createMeeting 에러: $e');
-      print('❌ [MeetingClient] StackTrace: $stackTrace');
+      print('❌ [CREATE] createMeeting 에러: $e');
+      print('❌ [CREATE] StackTrace: $stackTrace');
 
       if (e is DioException) {
-        print('❌ [MeetingClient] Status Code: ${e.response?.statusCode}');
-        print('❌ [MeetingClient] Response Data: ${e.response?.data}');
-        print('❌ [MeetingClient] Error Message: ${e.message}');
+        print('❌ [CREATE] Status Code: ${e.response?.statusCode}');
+        print('❌ [CREATE] Response Data: ${e.response?.data}');
+        print('❌ [CREATE] Error Message: ${e.message}');
       }
+      print('═══════════════════════════════════════════');
+      print('');
 
       rethrow;
     }
@@ -349,6 +502,36 @@ class MeetingClient {
       print('✅ [MeetingClient] 모임 수정 성공');
     } catch (e, stackTrace) {
       print('❌ [MeetingClient] updateMeeting 에러: $e');
+      print('❌ [MeetingClient] StackTrace: $stackTrace');
+
+      if (e is DioException) {
+        print('❌ [MeetingClient] Status Code: ${e.response?.statusCode}');
+        print('❌ [MeetingClient] Response Data: ${e.response?.data}');
+        print('❌ [MeetingClient] Error Message: ${e.message}');
+      }
+
+      rethrow;
+    }
+  }
+
+  /// 모임 날짜 확정
+  ///
+  /// PATCH /api/meetings/{id}/confirm
+  ///
+  /// 투표된 날짜 중 최다 득표 날짜를 확정합니다.
+  /// HOST만 호출 가능
+  /// Authorization 헤더에 Access Token 필요
+  Future<void> confirmMeeting(int meetingId) async {
+    try {
+      print('🌐 [MeetingClient] PATCH /api/meetings/$meetingId/confirm');
+
+      final response = await _dioClient.patch('/api/meetings/$meetingId/confirm');
+
+      print('🌐 [MeetingClient] Response Status: ${response.statusCode}');
+      print('🌐 [MeetingClient] Response Data: ${response.data}');
+      print('✅ [MeetingClient] 모임 확정 성공');
+    } catch (e, stackTrace) {
+      print('❌ [MeetingClient] confirmMeeting 에러: $e');
       print('❌ [MeetingClient] StackTrace: $stackTrace');
 
       if (e is DioException) {

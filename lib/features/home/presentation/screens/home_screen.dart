@@ -54,18 +54,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  /// 가장 가까운 모임 찾기 (날짜가 확정된 모임 중)
-  MeetingBriefWithParticipants? _findClosestMeeting(List<MeetingBriefWithParticipants> meetings) {
+  /// 우선순위 기반 모임 선택 (D-day 카드용)
+  /// 1순위: 오늘 확정된 모임
+  /// 2순위: 투표 중인 모임 (가장 먼저 생성된 것)
+  /// 3순위: 7일 이내 확정된 모임 (가장 가까운 것)
+  MeetingBriefWithParticipants? _findPriorityMeeting(List<MeetingBriefWithParticipants> meetings) {
     if (meetings.isEmpty) return null;
 
+    final today = DateTime.now();
+    final todayMidnight = DateTime(today.year, today.month, today.day);
+
+    // 1순위: 오늘 확정된 모임
+    for (final meeting in meetings) {
+      if (meeting.date == null || meeting.status != MeetingStatus.fixed) continue;
+
+      try {
+        final meetingDate = DateTime.parse(meeting.date!);
+        final meetingMidnight = DateTime(meetingDate.year, meetingDate.month, meetingDate.day);
+        if (meetingMidnight.isAtSameMomentAs(todayMidnight)) {
+          return meeting;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+
+    // 2순위: 투표 중인 모임 (가장 먼저 생성된 것)
+    final votingMeetings = meetings.where((meeting) {
+      return meeting.status == MeetingStatus.dateVoting ||
+          meeting.status == MeetingStatus.timeVoting ||
+          meeting.status == MeetingStatus.placeVoting ||
+          meeting.status == MeetingStatus.created;
+    }).toList();
+
+    if (votingMeetings.isNotEmpty) {
+      return votingMeetings.reduce((a, b) => a.meetingId < b.meetingId ? a : b);
+    }
+
+    // 3순위: 7일 이내 확정된 모임 (가장 가까운 것)
     MeetingBriefWithParticipants? closestMeeting;
     int? smallestDays;
 
     for (final meeting in meetings) {
-      if (meeting.date == null) continue;
+      if (meeting.date == null || meeting.status != MeetingStatus.fixed) continue;
 
       final daysUntil = _calculateDaysUntilMeeting(meeting.date);
-      if (daysUntil == null || daysUntil < 0) continue; // 과거 모임 제외
+      if (daysUntil == null || daysUntil < 0 || daysUntil > 7) continue;
 
       if (smallestDays == null || daysUntil < smallestDays) {
         smallestDays = daysUntil;
@@ -74,25 +108,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     return closestMeeting;
-  }
-
-  /// 인사말 메시지 생성
-  String _getGreetingMessage(MeetingBriefWithParticipants? closestMeeting) {
-    if (closestMeeting == null) {
-      return '모임을 만들어볼까요?';
-    }
-
-    final daysUntil = _calculateDaysUntilMeeting(closestMeeting.date);
-
-    if (daysUntil == null) {
-      return '즐거운 모임 되세요!';
-    } else if (daysUntil == 0) {
-      return '오늘은 모임이 있어요!';
-    } else if (daysUntil == 1) {
-      return '내일 모임이 있어요!';
-    } else {
-      return '모임이 ${daysUntil}일 남았어요!';
-    }
   }
 
   @override
@@ -120,9 +135,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       });
     }
 
-    // 가장 가까운 모임 찾기
-    final closestMeeting = homeState.homeData != null
-        ? _findClosestMeeting(homeState.homeData!.homeMeetings)
+    // 우선순위 기반 모임 찾기 (D-day 카드용)
+    final priorityMeeting = homeState.homeData != null
+        ? _findPriorityMeeting(homeState.homeData!.homeMeetings)
         : null;
 
     return Scaffold(
@@ -147,10 +162,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                       const SizedBox(height: 24),
 
-                      // 인사말 섹션
+                      // 인사말 섹션 (동적 메시지 사용)
                       _buildGreetingSection(
                         userProfile.displayName,
-                        _getGreetingMessage(closestMeeting),
+                        homeState.topMessage,
                       ),
 
                       const SizedBox(height: 24),
@@ -170,7 +185,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                       // 모임이 있을 때
                       else
-                        ..._buildMeetingContent(homeState, closestMeeting),
+                        ..._buildMeetingContent(homeState, priorityMeeting),
 
                       const SizedBox(height: 100), // 플로팅 버튼 공간 확보
                     ],
@@ -523,14 +538,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return widgets;
   }
 
-  /// D-day 카드 (가장 가까운 모임)
+  /// D-day 카드 (우선순위 모임)
   Widget _buildDDayCard(MeetingBriefWithParticipants meeting) {
+    // 투표 중인 모임인지 확인
+    final isVoting = meeting.status == MeetingStatus.dateVoting ||
+        meeting.status == MeetingStatus.timeVoting ||
+        meeting.status == MeetingStatus.placeVoting ||
+        meeting.status == MeetingStatus.created;
+
     final daysUntil = _calculateDaysUntilMeeting(meeting.date);
     final dDayText = daysUntil == null
         ? ''
         : daysUntil == 0
-            ? 'D-Day'
-            : 'D-${daysUntil}';
+            ? 'D-day'
+            : 'D-$daysUntil';
 
     // 참여자 아바타 표시 (최대 4명)
     final displayParticipants = meeting.participants.take(4).toList();
@@ -577,8 +598,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // D-day 배지
-            if (dDayText.isNotEmpty)
+            // 배지: 투표 중이면 "일정 이야기 중", 확정되었으면 D-day
+            if (isVoting || dDayText.isNotEmpty)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: ShapeDecoration(
@@ -588,7 +609,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
                 child: Text(
-                  dDayText,
+                  isVoting ? '일정 이야기 중' : dDayText,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
@@ -731,6 +752,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   /// 모임 카드 (친구들이 기다려요 섹션)
   Widget _buildMeetingCard(MeetingBriefWithParticipants meeting) {
+    // 투표 중인 모임인지 확인
+    final isVoting = meeting.status == MeetingStatus.dateVoting ||
+        meeting.status == MeetingStatus.timeVoting ||
+        meeting.status == MeetingStatus.placeVoting ||
+        meeting.status == MeetingStatus.created;
+
     final dateText = meeting.date != null
         ? DateFormatter.toKoreanDate(meeting.date)
         : null;
@@ -769,18 +796,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 모임 제목
-            Text(
-              meeting.title,
-              style: const TextStyle(
-                color: Color(0xFF111111),
-                fontSize: 16,
-                fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w700,
-                height: 1.5,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            // 투표 상태 태그 + 모임 제목
+            Row(
+              children: [
+                // 투표 중 태그
+                if (isVoting)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8EEFF),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      '일정 이야기 중',
+                      style: TextStyle(
+                        color: Color(0xFF1A49F1),
+                        fontSize: 12,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w600,
+                        height: 1.33,
+                      ),
+                    ),
+                  ),
+                // 모임 제목
+                Expanded(
+                  child: Text(
+                    meeting.title,
+                    style: const TextStyle(
+                      color: Color(0xFF111111),
+                      fontSize: 16,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w700,
+                      height: 1.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
 

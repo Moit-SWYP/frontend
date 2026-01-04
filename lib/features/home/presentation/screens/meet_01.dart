@@ -207,7 +207,13 @@ class _Meet01ScreenState extends ConsumerState<Meet01Screen> {
               // 다음으로 버튼
               GestureDetector(
                 onTap: (_nameController.text.isNotEmpty && !_isCreating)
-                    ? _createMeetingAndProceed
+                    ? () {
+                        print('');
+                        print('🔘🔘🔘 [Meet01] 버튼 클릭됨! 🔘🔘🔘');
+                        print('🔘 [Meet01] 입력된 이름: ${_nameController.text}');
+                        print('');
+                        _createMeetingAndProceed();
+                      }
                     : null,
                 child: Container(
                   width: double.infinity,
