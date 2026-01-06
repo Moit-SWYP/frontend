@@ -8,6 +8,7 @@ import 'package:moit/features/home/presentation/screens/meet_01.dart';
 import 'package:moit/features/home/providers/home_provider.dart';
 import 'package:moit/features/meeting/data/models/meeting_brief.dart';
 import 'package:moit/features/meeting/presentation/screens/meeting_detail_screen.dart';
+import 'package:moit/features/member/data/models/character_type.dart';
 import 'package:moit/features/member/providers/user_profile_provider.dart';
 
 /// 메인 홈 화면 (모임 리스트 표시)
@@ -677,7 +678,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             child: ClipOval(
                               child: SvgPicture.asset(
-                                displayParticipants[i].characterIcon,
+                                displayParticipants[i].characterType.getIconPath('S'),
                                 width: 32,
                                 height: 32,
                                 fit: BoxFit.cover,
@@ -877,7 +878,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             child: ClipOval(
                               child: SvgPicture.asset(
-                                displayParticipants[i].characterIcon,
+                                displayParticipants[i].characterType.getIconPath('S'),
                                 width: 24,
                                 height: 24,
                                 fit: BoxFit.cover,

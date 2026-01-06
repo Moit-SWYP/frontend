@@ -1,6 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:moit/features/meeting/data/models/meeting_brief.dart';
-import 'package:moit/features/auth/data/models/signup_request.dart';
+import 'package:moit/features/member/data/models/character_type.dart';
 
 part 'home_response.g.dart';
 
@@ -37,28 +37,6 @@ class ParticipantInfo {
         return '방장';
       case MeetingParticipantRole.member:
         return '멤버';
-    }
-  }
-
-  /// 캐릭터 아이콘 경로
-  String get characterIcon {
-    switch (characterType) {
-      case CharacterType.foodie:
-        return 'assets/icons/food_S.svg';
-      case CharacterType.drinker:
-        return 'assets/icons/alcohol_S.svg';
-      case CharacterType.healer:
-        return 'assets/icons/healer.svg';
-      case CharacterType.cultureLover:
-        return 'assets/icons/exhibit_S.svg';
-      case CharacterType.traveler:
-        return 'assets/icons/traveler.svg';
-      case CharacterType.active:
-        return 'assets/icons/active.svg';
-      case CharacterType.trendSetter:
-        return 'assets/icons/trend.svg';
-      case CharacterType.studyer:
-        return 'assets/icons/study_S.svg';
     }
   }
 }

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moit/core/constants/app_colors.dart';
+import 'package:moit/features/member/data/models/character_type.dart';
+import 'package:moit/features/member/providers/member_provider.dart';
 
 /// 회원탈퇴 화면
-class WithdrawAccountScreen extends StatefulWidget {
+class WithdrawAccountScreen extends ConsumerStatefulWidget {
   const WithdrawAccountScreen({super.key});
 
   @override
-  State<WithdrawAccountScreen> createState() => _WithdrawAccountScreenState();
+  ConsumerState<WithdrawAccountScreen> createState() => _WithdrawAccountScreenState();
 }
 
-class _WithdrawAccountScreenState extends State<WithdrawAccountScreen> {
+class _WithdrawAccountScreenState extends ConsumerState<WithdrawAccountScreen> {
   // 선택된 탈퇴 사유
   String? selectedReason;
 
@@ -48,6 +51,8 @@ class _WithdrawAccountScreenState extends State<WithdrawAccountScreen> {
 
   /// 확인 다이얼로그 표시
   Future<void> _showWithdrawConfirmDialog() async {
+    final memberState = ref.read(memberProvider);
+
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
@@ -68,11 +73,17 @@ class _WithdrawAccountScreenState extends State<WithdrawAccountScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: SvgPicture.asset(
-                    'assets/icons/group_misik.svg',
-                    width: 72.9,
-                    height: 75.4,
-                  ),
+                  child: memberState.memberInfo?.characterType != null
+                      ? SvgPicture.asset(
+                          memberState.memberInfo!.characterType!.getIconPath('L'),
+                          width: 72,
+                          height: 72,
+                        )
+                      : SvgPicture.asset(
+                          CharacterType.FOODIE.getIconPath('L'),
+                          width: 72,
+                          height: 72,
+                        ),
                 ),
               ),
               const SizedBox(height: 24),

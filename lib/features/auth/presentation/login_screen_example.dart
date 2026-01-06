@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moit/features/auth/data/models/signup_request.dart';
 import 'package:moit/features/auth/providers/auth_provider.dart';
+import 'package:moit/features/member/data/models/character_type.dart';
 
 /// 로그인 화면 예시
 class LoginScreenExample extends ConsumerWidget {
@@ -95,7 +96,7 @@ class _SignupScreenExampleState extends ConsumerState<SignupScreenExample> {
   final _nicknameController = TextEditingController();
   final _birthDateController = TextEditingController();
   Gender _selectedGender = Gender.male;
-  CharacterType _selectedCharacter = CharacterType.foodie;
+  CharacterType _selectedCharacter = CharacterType.FOODIE;
 
   @override
   void dispose() {
@@ -232,21 +233,21 @@ class _SignupScreenExampleState extends ConsumerState<SignupScreenExample> {
 
   String _getCharacterTypeLabel(CharacterType type) {
     switch (type) {
-      case CharacterType.foodie:
+      case CharacterType.FOODIE:
         return '미식가';
-      case CharacterType.drinker:
+      case CharacterType.DRINKER:
         return '술고래';
-      case CharacterType.healer:
+      case CharacterType.HEALER:
         return '힐러';
-      case CharacterType.cultureLover:
+      case CharacterType.CULTURE_LOVER:
         return '문화애호가';
-      case CharacterType.traveler:
+      case CharacterType.TRAVELER:
         return '여행가';
-      case CharacterType.active:
+      case CharacterType.ACTIVE:
         return '액티브';
-      case CharacterType.trendSetter:
+      case CharacterType.TREND_SETTER:
         return '트렌드세터';
-      case CharacterType.studyer:
+      case CharacterType.STUDYER:
         return '공부벌레';
     }
   }

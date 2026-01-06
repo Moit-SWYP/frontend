@@ -67,4 +67,26 @@ extension CharacterTypeExtension on CharacterType {
       orElse: () => CharacterType.FOODIE,
     );
   }
+
+  /// 캐릭터 아이콘 경로 (Size: S, M, L)
+  String getIconPath(String size) {
+    switch (this) {
+      case CharacterType.FOODIE:
+        return 'assets/icons/character/Type=food, Size=$size.svg';
+      case CharacterType.DRINKER:
+        return 'assets/icons/character/Type=alcohol, Size=$size.svg';
+      case CharacterType.HEALER:
+        return 'assets/icons/character/Type=cafe, Size=$size.svg';
+      case CharacterType.CULTURE_LOVER:
+        return 'assets/icons/character/Type=exhibit, Size=$size.svg';
+      case CharacterType.TRAVELER:
+        return 'assets/icons/character/Type=trip, Size=$size.svg';
+      case CharacterType.ACTIVE:
+        return 'assets/icons/character/Type=sports, Size=$size.svg';
+      case CharacterType.TREND_SETTER:
+        return 'assets/icons/character/Type=insta, Size=$size.svg';
+      case CharacterType.STUDYER:
+        return 'assets/icons/character/Type=study, Size=$size.svg';
+    }
+  }
 }

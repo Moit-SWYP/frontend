@@ -8,6 +8,7 @@ import 'package:moit/features/auth/presentation/widgets/custom_text_field.dart';
 import 'package:moit/features/auth/presentation/widgets/gender_selector.dart';
 import 'package:moit/features/auth/providers/auth_provider.dart';
 import 'package:moit/features/auth/data/models/signup_request.dart';
+import 'package:moit/features/member/data/models/character_type.dart';
 
 /// 회원가입 상세 정보 입력 화면
 class SignupDetailScreen extends ConsumerStatefulWidget {
@@ -77,7 +78,7 @@ class _SignupDetailScreenState extends ConsumerState<SignupDetailScreen> {
         nickname: _nameController.text,
         birthDate: formattedBirthDate,
         gender: _selectedGender!,
-        characterType: CharacterType.foodie, // TODO: 캐릭터 선택 화면 추가 시 수정
+        characterType: CharacterType.FOODIE, // TODO: 캐릭터 선택 화면 추가 시 수정
       );
 
       if (!mounted) return;

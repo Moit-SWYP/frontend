@@ -30,12 +30,12 @@ const _$GenderEnumMap = {
 };
 
 const _$CharacterTypeEnumMap = {
-  CharacterType.foodie: 'FOODIE',
-  CharacterType.drinker: 'DRINKER',
-  CharacterType.healer: 'HEALER',
-  CharacterType.cultureLover: 'CULTURE_LOVER',
-  CharacterType.traveler: 'TRAVELER',
-  CharacterType.active: 'ACTIVE',
-  CharacterType.trendSetter: 'TREND_SETTER',
-  CharacterType.studyer: 'STUDYER',
+  CharacterType.FOODIE: 'FOODIE',
+  CharacterType.DRINKER: 'DRINKER',
+  CharacterType.HEALER: 'HEALER',
+  CharacterType.CULTURE_LOVER: 'CULTURE_LOVER',
+  CharacterType.TRAVELER: 'TRAVELER',
+  CharacterType.ACTIVE: 'ACTIVE',
+  CharacterType.TREND_SETTER: 'TREND_SETTER',
+  CharacterType.STUDYER: 'STUDYER',
 };

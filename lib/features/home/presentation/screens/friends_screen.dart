@@ -228,9 +228,6 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
 
   /// 캐릭터 아이콘 위젯
   Widget _buildCharacterIcon(CharacterType characterType) {
-    // 캐릭터 타입에 따른 아이콘 매핑
-    String iconPath = _getCharacterIconPath(characterType);
-
     return Container(
       width: 56,
       height: 56,
@@ -240,33 +237,11 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       ),
       child: Center(
         child: SvgPicture.asset(
-          iconPath,
+          characterType.getIconPath('M'),
           width: 40,
           height: 40,
         ),
       ),
     );
-  }
-
-  /// 캐릭터 타입에 따른 아이콘 경로 반환
-  String _getCharacterIconPath(CharacterType characterType) {
-    switch (characterType) {
-      case CharacterType.FOODIE:
-        return 'assets/icons/group_misik.svg';
-      case CharacterType.DRINKER:
-        return 'assets/icons/group_misik.svg'; // TODO: 실제 아이콘으로 교체
-      case CharacterType.HEALER:
-        return 'assets/icons/group_misik.svg'; // TODO: 실제 아이콘으로 교체
-      case CharacterType.CULTURE_LOVER:
-        return 'assets/icons/group_misik.svg'; // TODO: 실제 아이콘으로 교체
-      case CharacterType.TRAVELER:
-        return 'assets/icons/group_misik.svg'; // TODO: 실제 아이콘으로 교체
-      case CharacterType.ACTIVE:
-        return 'assets/icons/group_misik.svg'; // TODO: 실제 아이콘으로 교체
-      case CharacterType.TREND_SETTER:
-        return 'assets/icons/group_misik.svg'; // TODO: 실제 아이콘으로 교체
-      case CharacterType.STUDYER:
-        return 'assets/icons/group_misik.svg'; // TODO: 실제 아이콘으로 교체
-    }
   }
 }

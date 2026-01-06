@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:moit/core/constants/app_colors.dart';
 import 'package:moit/core/constants/app_text_styles.dart';
 import 'package:moit/features/auth/providers/auth_provider.dart';
+import 'package:moit/features/member/data/models/character_type.dart';
 import 'package:moit/features/member/providers/user_profile_provider.dart';
 import 'package:moit/features/member/providers/user_profile_state.dart';
 import 'package:moit/features/settings/presentation/widgets/settings_section.dart';
@@ -127,11 +128,17 @@ class SettingsScreen extends ConsumerWidget {
             shape: BoxShape.circle,
           ),
           child: Center(
-            child: SvgPicture.asset(
-              'assets/icons/group_misik.svg',
-              width: 40.83,
-              height: 42.21,
-            ),
+            child: userProfile.profile?.characterType != null
+                ? SvgPicture.asset(
+                    userProfile.profile!.characterType!.getIconPath('L'),
+                    width: 56,
+                    height: 56,
+                  )
+                : SvgPicture.asset(
+                    CharacterType.FOODIE.getIconPath('L'),
+                    width: 56,
+                    height: 56,
+                  ),
           ),
         ),
 

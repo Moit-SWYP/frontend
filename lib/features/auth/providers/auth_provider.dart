@@ -6,6 +6,7 @@ import 'package:moit/features/auth/providers/auth_state.dart';
 import 'package:moit/features/auth/services/social_login_service.dart';
 import 'package:moit/features/home/providers/home_provider.dart';
 import 'package:moit/features/meeting/providers/meeting_provider.dart';
+import 'package:moit/features/member/data/models/character_type.dart';
 import 'package:moit/features/member/providers/user_profile_provider.dart';
 
 /// 인증 상태 Provider

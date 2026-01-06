@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:moit/core/constants/app_colors.dart';
 import 'package:moit/core/constants/app_text_styles.dart';
 import 'package:moit/core/services/kakao_login_service.dart';
+import 'package:moit/features/member/data/models/character_type.dart';
 import 'package:moit/features/member/providers/member_provider.dart';
 
 /// 내 정보 화면
@@ -159,6 +160,12 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
 
   /// 프로필 아바타
   Widget _buildProfileAvatar() {
+    final memberState = ref.watch(memberProvider);
+
+    // 디버그 로그
+    print('🎨 [MyProfile] characterType: ${memberState.memberInfo?.characterType}');
+    print('🎨 [MyProfile] memberInfo null?: ${memberState.memberInfo == null}');
+
     return Container(
       width: 100,
       height: 100,
@@ -167,11 +174,17 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
         shape: BoxShape.circle,
       ),
       child: Center(
-        child: SvgPicture.asset(
-          'assets/icons/group_misik.svg',
-          width: 72.9,
-          height: 75.4,
-        ),
+        child: memberState.memberInfo?.characterType != null
+            ? SvgPicture.asset(
+                memberState.memberInfo!.characterType!.getIconPath('L'),
+                width: 100,
+                height: 100,
+              )
+            : SvgPicture.asset(
+                CharacterType.FOODIE.getIconPath('L'),
+                width: 100,
+                height: 100,
+              ),
       ),
     );
   }

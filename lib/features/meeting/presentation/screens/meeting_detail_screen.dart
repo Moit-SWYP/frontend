@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:moit/core/utils/date_formatter.dart';
 import 'package:moit/features/meeting/data/models/meeting_brief.dart';
 import 'package:moit/features/meeting/data/models/vote_summary_response.dart';
 import 'package:moit/features/meeting/providers/vote_provider.dart';
 import 'package:moit/features/meeting/providers/meeting_provider.dart';
+import 'package:moit/features/home/presentation/screens/meet_03.dart';
+import 'package:moit/features/member/data/models/character_type.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 
@@ -24,23 +28,37 @@ class MeetingDetailScreen extends ConsumerStatefulWidget {
       _MeetingDetailScreenState();
 }
 
-class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
+class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
+    with AutomaticKeepAliveClientMixin {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   String? _selectedTime; // 선택된 시간
   VotersResponse? _selectedDateVoters;
   VotersResponse? _selectedTimeVoters; // 선택된 시간의 투표자
   bool _isLoadingVoters = false;
+  bool _isLinkCopied = false;
+  bool _isGeneratingLink = false;
+  String? _invitationLink;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    // 화면 진입 시 투표 요약 로드
+    // 화면 진입 시 투표 요약 로드 (캐시된 데이터가 없을 때만)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('📋 [MeetingDetail] 투표 요약 로드 시작: ${widget.meeting.meetingId}');
-      ref
-          .read(voteProvider(widget.meeting.meetingId).notifier)
-          .loadVoteSummary();
+      final currentState = ref.read(voteProvider(widget.meeting.meetingId));
+
+      // 이미 데이터가 있으면 다시 로드하지 않음 (상태 유지)
+      if (currentState.summary == null && !currentState.isLoading) {
+        print('📋 [MeetingDetail] 투표 요약 로드 시작: ${widget.meeting.meetingId}');
+        ref
+            .read(voteProvider(widget.meeting.meetingId).notifier)
+            .loadVoteSummary();
+      } else {
+        print('✅ [MeetingDetail] 캐시된 투표 데이터 사용 (meetingId: ${widget.meeting.meetingId})');
+      }
     });
   }
 
@@ -110,22 +128,10 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
     }
   }
 
-  /// 캐릭터 타입에 따른 색상 반환
-  Color _getCharacterColor(String characterType) {
-    switch (characterType.toLowerCase()) {
-      case 'orange':
-        return const Color(0xFFFF6B00);
-      case 'red':
-        return const Color(0xFFFF0000);
-      case 'blue':
-        return const Color(0xFF0066FF);
-      default:
-        return const Color(0xFF999999);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin 필수 호출
+
     final voteState = ref.watch(voteProvider(widget.meeting.meetingId));
 
     // 에러 메시지 표시
@@ -167,11 +173,12 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
         actions: [
           // 초대 링크 버튼
           IconButton(
-            icon: const Icon(Icons.link, color: Color(0xFF111111)),
-            onPressed: () {
-              // TODO: 초대 링크 공유 기능
-              print('🔗 [MeetingDetail] 초대 링크 클릭');
-            },
+            icon: SvgPicture.asset(
+              'assets/icons/link.svg',
+              width: 24,
+              height: 24,
+            ),
+            onPressed: _showLinkShareDialog,
           ),
         ],
       ),
@@ -193,16 +200,30 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: const Text(
-                          '초대',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFFC5C8CE),
-                            fontSize: 16,
-                            fontFamily: 'Pretendard',
-                            fontWeight: FontWeight.w600,
+                      child: GestureDetector(
+                        onTap: () {
+                          // 초대 탭 클릭 시 Meet03Screen으로 이동
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => Meet03Screen(
+                                meetingName: widget.meeting.title,
+                                meetingId: widget.meeting.meetingId,
+                                initialTab: 0, // 초대 탭
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: const Text(
+                            '초대',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Color(0xFFC5C8CE),
+                              fontSize: 16,
+                              fontFamily: 'Pretendard',
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
@@ -250,53 +271,104 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 16),
 
-                    // 투표 종료 안내
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                    // 🔥 투표 여부에 따라 UI 분기
+                    if (voteState.hasVotedDate) ...[
+                      // meet09: 투표 완료 상태 - 투표한 날짜 칩 표시
+                      const Text(
+                        '내가 투표한 날짜',
+                        style: TextStyle(
+                          color: Color(0xFF111111),
+                          fontSize: 14,
+                          fontFamily: 'Pretendard',
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF7F8F9),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 20,
-                            height: 20,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Color(0xFF1A49F1),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: (voteState.summary?.dateSummary?.votedDates ?? [])
+                            .map((dateStr) {
+                          // yyyy-MM-dd 형식을 M월 d일로 변환
+                          final parts = dateStr.split('-');
+                          final month = int.parse(parts[1]);
+                          final day = int.parse(parts[2]);
+                          final displayText = '$month월 $day일';
+
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
-                            child: const Icon(
-                              Icons.check,
-                              size: 14,
-                              color: Colors.white,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8EDFE), // main010
+                              border: Border.all(
+                                color: const Color(0xFF1A49F1), // main050
+                                width: 1,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Expanded(
                             child: Text(
-                              '유력해요!',
-                              style: TextStyle(
-                                color: Color(0xFF111111),
+                              displayText,
+                              style: const TextStyle(
+                                color: Color(0xFF1A49F1), // main050
                                 fontSize: 14,
                                 fontFamily: 'Pretendard',
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ),
-                        ],
+                          );
+                        }).toList(),
                       ),
-                    ),
+                    ] else ...[
+                      // meet07: 투표 전 상태 - 캘린더 표시
+                      // 투표 종료 안내
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF7F8F9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 20,
+                              height: 20,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Color(0xFF1A49F1),
+                              ),
+                              child: const Icon(
+                                Icons.check,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text(
+                                '유력해요!',
+                                style: TextStyle(
+                                  color: Color(0xFF111111),
+                                  fontSize: 14,
+                                  fontFamily: 'Pretendard',
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    // 캘린더
-                    Container(
+                      // 캘린더
+                      Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
@@ -399,16 +471,9 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                           label: '유력한 날짜',
                           count: 7,
                         ),
-                        const SizedBox(width: 12),
-                        // 날짜 후보
-                        _buildVoteStatusBadge(
-                          icon: Icons.calendar_today_outlined,
-                          color: const Color(0xFF999999),
-                          label: '날짜 후보',
-                          count: 7,
-                        ),
                       ],
                     ),
+                    ], // else 블록 닫기
 
                     const SizedBox(height: 32),
 
@@ -507,20 +572,26 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                             spacing: 16,
                             runSpacing: 16,
                             children: _selectedDateVoters!.voters.map((voter) {
+                              // String characterType을 CharacterType enum으로 변환
+                              final characterType = CharacterTypeExtension.fromJson(voter.characterType);
+
                               return Column(
                                 children: [
                                   // 캐릭터 아이콘
                                   Container(
                                     width: 48,
                                     height: 48,
-                                    decoration: BoxDecoration(
-                                      color: _getCharacterColor(voter.characterType),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFF7F8F9),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(
-                                      Icons.person,
-                                      color: Colors.white,
-                                      size: 24,
+                                    child: Center(
+                                      child: SvgPicture.asset(
+                                        characterType.getIconPath('S'),
+                                        width: 32,
+                                        height: 32,
+                                        fit: BoxFit.cover,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 8),
@@ -1118,19 +1189,25 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
           spacing: 16,
           runSpacing: 16,
           children: _selectedTimeVoters!.voters.map((voter) {
+            // String characterType을 CharacterType enum으로 변환
+            final characterType = CharacterTypeExtension.fromJson(voter.characterType);
+
             return Column(
               children: [
                 Container(
                   width: 48,
                   height: 48,
-                  decoration: BoxDecoration(
-                    color: _getCharacterColor(voter.characterType),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF7F8F9),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.person,
-                    color: Colors.white,
-                    size: 24,
+                  child: Center(
+                    child: SvgPicture.asset(
+                      characterType.getIconPath('S'),
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1431,6 +1508,182 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
           ),
         ),
     ];
+  }
+
+  /// 링크 공유 다이얼로그
+  void _showLinkShareDialog() async {
+    // 링크가 이미 생성되었으면 바로 다이얼로그 표시
+    if (_invitationLink != null) {
+      _showLinkDialog(_invitationLink!);
+      return;
+    }
+
+    // 링크 생성 중 표시
+    setState(() {
+      _isGeneratingLink = true;
+    });
+
+    try {
+      print('🔗 [MeetingDetail] 초대 링크 생성 시작: meetingId=${widget.meeting.meetingId}');
+
+      final invitationLink = await ref
+          .read(meetingProvider.notifier)
+          .getInvitationLink(widget.meeting.meetingId);
+
+      if (!mounted) return;
+
+      if (invitationLink != null) {
+        print('✅ [MeetingDetail] 초대 링크 생성 성공: $invitationLink');
+        setState(() {
+          _invitationLink = invitationLink;
+          _isGeneratingLink = false;
+        });
+        _showLinkDialog(invitationLink);
+      } else {
+        print('❌ [MeetingDetail] 초대 링크 생성 실패');
+        setState(() {
+          _isGeneratingLink = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('초대 링크 생성에 실패했습니다.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ [MeetingDetail] 초대 링크 생성 에러: $e');
+      if (!mounted) return;
+
+      setState(() {
+        _isGeneratingLink = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('초대 링크 생성 중 오류가 발생했습니다.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// 링크 다이얼로그 표시
+  void _showLinkDialog(String linkUrl) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    '약속방 링크 공유하기',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF111111),
+                      fontSize: 18,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w700,
+                      height: 1.33,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '약속방 링크를 친구에게 공유하고\n모잇에서 편리하게 약속을 정해보세요!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF505050),
+                      fontSize: 13,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w400,
+                      height: 1.38,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // 링크 박스
+                  GestureDetector(
+                    onTap: () {
+                      _copyLinkToClipboard(linkUrl);
+                      setDialogState(() {
+                        _isLinkCopied = true;
+                      });
+                      // 2초 후 원래 색상으로 복귀
+                      Future.delayed(const Duration(seconds: 2), () {
+                        if (mounted) {
+                          setDialogState(() {
+                            _isLinkCopied = false;
+                          });
+                        }
+                      });
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: ShapeDecoration(
+                        color: _isLinkCopied
+                            ? const Color(0xFFE8EDFE) // main010 (복사 후)
+                            : const Color(0xFFE9EBEE), // grey040 (기본)
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              linkUrl,
+                              style: TextStyle(
+                                color: _isLinkCopied
+                                    ? const Color(0xFF1A49F1) // main050 (복사 후)
+                                    : const Color(0xFF999999), // color-disable (기본)
+                                fontSize: 16,
+                                fontFamily: 'Pretendard',
+                                fontWeight: FontWeight.w400,
+                                height: 1.50,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          SvgPicture.asset(
+                            'assets/icons/copy.svg',
+                            width: 18,
+                            height: 18,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// 클립보드에 링크 복사
+  void _copyLinkToClipboard(String linkUrl) {
+    Clipboard.setData(ClipboardData(text: linkUrl));
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('링크가 복사되었습니다'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 }
 

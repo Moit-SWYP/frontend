@@ -5,6 +5,7 @@ import 'package:moit/features/auth/data/clients/auth_client.dart';
 import 'package:moit/features/auth/data/models/auth_response.dart';
 import 'package:moit/features/auth/data/models/login_request.dart';
 import 'package:moit/features/auth/data/models/signup_request.dart';
+import 'package:moit/features/member/data/models/character_type.dart';
 
 /// 소셜 로그인 통합 서비스
 ///

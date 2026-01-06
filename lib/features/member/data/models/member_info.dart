@@ -14,9 +14,7 @@ class MemberInfo {
   final String birthDate; // 생년월일 (yyyy-MM-dd)
   final String gender; // 성별 (MALE, FEMALE)
   final List<SocialAccount> socialAccounts; // 연동된 소셜 계정 목록
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  CharacterType? characterType; // 캐릭터 타입 (선택적)
+  final CharacterType? characterType; // 캐릭터 타입 (선택적)
 
   MemberInfo({
     required this.email,

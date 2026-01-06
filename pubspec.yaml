@@ -55,8 +55,9 @@ dependencies:
   json_annotation: ^4.8.1
   logger: ^2.0.2+1
 
-  # Kakao Login SDK
+  # Social Login SDKs
   kakao_flutter_sdk_user: 1.9.6
+  flutter_naver_login: ^1.8.0
 
 dev_dependencies:
   flutter_test:
@@ -89,6 +90,7 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/icons/character/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
