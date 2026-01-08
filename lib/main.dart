@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:moit/core/router/app_router.dart';
 import 'package:moit/core/theme/app_theme.dart';
 import 'package:moit/core/services/kakao_login_service.dart';
+import 'package:moit/core/services/deep_link_service.dart';
 
 void main() async {
   // Flutter 바인딩 초기화
@@ -22,11 +23,33 @@ void main() async {
   );
 }
 
-class MoitApp extends ConsumerWidget {
+class MoitApp extends ConsumerStatefulWidget {
   const MoitApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MoitApp> createState() => _MoitAppState();
+}
+
+class _MoitAppState extends ConsumerState<MoitApp> {
+  final _deepLinkService = DeepLinkService();
+
+  @override
+  void initState() {
+    super.initState();
+    // 딥링크 초기화는 첫 프레임 이후에 실행
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _deepLinkService.init(context, ref);
+    });
+  }
+
+  @override
+  void dispose() {
+    _deepLinkService.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Moit',
       theme: AppTheme.lightTheme,

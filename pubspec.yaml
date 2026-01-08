@@ -59,6 +59,9 @@ dependencies:
   kakao_flutter_sdk_user: 1.9.6
   flutter_naver_login: ^2.1.1
 
+  # Deep Link
+  app_links: ^6.3.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

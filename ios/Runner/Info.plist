@@ -50,7 +50,7 @@
 	<key>KAKAO_APP_KEY</key>
 	<string>5f85d667c593c86d5bc8372844f15800</string>
 
-	<!-- URL Scheme (카카오 로그인 리디렉션) -->
+	<!-- URL Scheme (카카오 로그인 리디렉션 + Deep Link) -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -59,8 +59,15 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>kakao5f85d667c593c86d5bc8372844f15800</string>
+				<string>moit</string>
 			</array>
 		</dict>
+	</array>
+
+	<!-- Universal Links (App Links) -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:moit.shop</string>
 	</array>
 
 	<!-- 카카오톡 앱 확인용 Scheme 목록 -->
