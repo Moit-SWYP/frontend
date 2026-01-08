@@ -1093,47 +1093,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               builder: (context) => MeetingDetailScreen(meeting: meeting),
             ),
           );
-        } else if (!voteState.hasVotedDate) {
-          // 투표 안 함 → 투표 화면
-          print('📋 [Home] 투표 안 함 → meet_07 이동');
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => Meet07Screen(
-                meetingName: meeting.title,
-                meetingId: meeting.meetingId,
-                initialTab: 1,
-              ),
-            ),
-          );
         } else {
-          // 투표 완료
-          if (voteState.isHost) {
-            // 모임장 → meet_09
-            print('👑 [Home] 모임장 & 투표 완료 → meet_09 이동');
+          // meetingStatus와 hasVotedDate 모두 확인
+          // CREATED 상태 또는 투표하지 않은 경우 → meet_07
+          final isCreatedStatus = voteState.summary!.meetingStatus == MeetingStatus.created;
+          final hasNotVoted = !voteState.hasVotedDate;
+
+          if (isCreatedStatus && hasNotVoted) {
+            // 투표 안 함 → 투표 화면
+            print('📋 [Home] 투표 안 함 (CREATED & no vote) → meet_07 이동');
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => Meet09Screen(
+                builder: (context) => Meet07Screen(
                   meetingName: meeting.title,
                   meetingId: meeting.meetingId,
-                  votedDates: {},
+                  initialTab: 1,
                 ),
               ),
             );
           } else {
-            // 모임원 → meet_17
-            print('👤 [Home] 모임원 & 투표 완료 → meet_17 이동');
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => Meet17Screen(
-                  meetingName: meeting.title,
-                  meetingId: meeting.meetingId,
-                  votedDates: {},
+            // 투표 완료 또는 투표 진행 중
+            if (voteState.isHost) {
+              // 모임장 → meet_09
+              print('👑 [Home] 모임장 & 투표 완료 → meet_09 이동');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Meet09Screen(
+                    meetingName: meeting.title,
+                    meetingId: meeting.meetingId,
+                    votedDates: {},
+                  ),
                 ),
-              ),
-            );
+              );
+            } else {
+              // 모임원 → meet_17
+              print('👤 [Home] 모임원 & 투표 완료 → meet_17 이동');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Meet17Screen(
+                    meetingName: meeting.title,
+                    meetingId: meeting.meetingId,
+                    votedDates: {},
+                  ),
+                ),
+              );
+            }
           }
         }
       },
