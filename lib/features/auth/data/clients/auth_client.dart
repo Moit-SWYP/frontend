@@ -129,4 +129,47 @@ class AuthClient {
       rethrow;
     }
   }
+
+  /// 네이버 로그인
+  ///
+  /// 네이버 액세스 토큰을 백엔드로 전송하여 인증을 처리합니다.
+  ///
+  /// - 기존 회원: JWT 토큰 발급 (signupRequired = false)
+  /// - 신규 회원: 회원가입 필요 (signupRequired = true, tokens = null)
+  ///
+  /// Request Body:
+  /// - accessToken: 네이버에서 발급받은 액세스 토큰
+  Future<ApiResponse<AuthResponse>> naverLogin(String accessToken) async {
+    try {
+      print('🌐 [AuthClient] POST /api/auth/naver');
+      print('🌐 [AuthClient] Request Body: {"accessToken": "$accessToken"}');
+
+      final response = await _dioClient.post(
+        '/api/auth/naver',
+        data: {
+          'accessToken': accessToken,
+        },
+      );
+
+      print('🌐 [AuthClient] Response Status: ${response.statusCode}');
+      print('🌐 [AuthClient] Response Data: ${response.data}');
+
+      return ApiResponse<AuthResponse>(
+        code: response.data['code']?.toString() ?? '200',
+        message: response.data['message'] ?? 'Success',
+        data: AuthResponse.fromJson(response.data['data']),
+      );
+    } catch (e) {
+      print('❌ [AuthClient] Naver Login 에러: $e');
+
+      // DioException인 경우 상세 정보 출력
+      if (e is DioException) {
+        print('❌ [AuthClient] Status Code: ${e.response?.statusCode}');
+        print('❌ [AuthClient] Response Data: ${e.response?.data}');
+        print('❌ [AuthClient] Error Message: ${e.message}');
+      }
+
+      rethrow;
+    }
+  }
 }

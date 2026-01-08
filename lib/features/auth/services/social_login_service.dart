@@ -1,5 +1,6 @@
 import 'package:moit/core/models/api_response.dart';
 import 'package:moit/core/services/kakao_login_service.dart';
+import 'package:moit/core/services/naver_login_service.dart';
 import 'package:moit/core/storage/token_storage.dart';
 import 'package:moit/features/auth/data/clients/auth_client.dart';
 import 'package:moit/features/auth/data/models/auth_response.dart';
@@ -9,12 +10,12 @@ import 'package:moit/features/member/data/models/character_type.dart';
 
 /// 소셜 로그인 통합 서비스
 ///
-/// 카카오 SDK와 백엔드 API를 연결하는 서비스
+/// 카카오/네이버 SDK와 백엔드 API를 연결하는 서비스
 ///
 /// 흐름:
-/// 1. 카카오 SDK로 로그인 → User 객체 획득
-/// 2. User 정보를 LoginRequest로 변환
-/// 3. AuthClient.login() 호출
+/// 1. 소셜 SDK로 로그인 → User 객체 획득
+/// 2. User 정보를 LoginRequest로 변환 (카카오) 또는 액세스 토큰 전송 (네이버)
+/// 3. AuthClient.login() 또는 AuthClient.naverLogin() 호출
 /// 4. signupRequired 체크
 ///    - false: 토큰 저장 후 로그인 완료
 ///    - true: 회원가입 필요
@@ -24,6 +25,9 @@ class SocialLoginService {
 
   // 카카오 사용자 정보 캐싱 (회원가입 시 재사용)
   Map<String, dynamic>? _cachedKakaoUser;
+
+  // 네이버 사용자 정보 캐싱 (회원가입 시 재사용)
+  Map<String, dynamic>? _cachedNaverUser;
 
   /// 카카오 로그인 및 백엔드 인증
   ///
@@ -75,6 +79,56 @@ class SocialLoginService {
     } catch (e) {
       print('❌ [백엔드 로그인] 에러: $e');
       _cachedKakaoUser = null;
+      rethrow;
+    }
+  }
+
+  /// 네이버 로그인 및 백엔드 인증
+  ///
+  /// 반환값:
+  /// - AuthResponse: 백엔드 로그인 응답
+  ///   - signupRequired = false: 기존 회원, 토큰 자동 저장됨
+  ///   - signupRequired = true: 신규 회원, 회원가입 필요
+  Future<AuthResponse> loginWithNaver() async {
+    try {
+      // 1. 네이버 SDK로 로그인
+      final naverUser = await NaverLoginService.login();
+
+      // 네이버 사용자 정보 캐싱 (회원가입 시 사용)
+      _cachedNaverUser = naverUser;
+
+      // 2. 액세스 토큰 추출
+      final accessToken = naverUser['accessToken'] as String;
+
+      // 🔍 디버깅: 백엔드로 보낼 액세스 토큰 출력
+      print('📤 [네이버 백엔드 로그인] 액세스 토큰 전송');
+
+      // 3. 백엔드 네이버 로그인 API 호출
+      final ApiResponse<AuthResponse> response =
+          await _authClient.naverLogin(accessToken);
+
+      print('📥 [네이버 백엔드 로그인] 응답 코드: ${response.code}');
+      print('📥 [네이버 백엔드 로그인] 응답 메시지: ${response.message}');
+
+      final authResponse = response.data!;
+
+      // 4. 기존 회원인 경우 토큰 저장
+      if (!authResponse.signupRequired && authResponse.tokens != null) {
+        await _tokenStorage.saveTokens(
+          accessToken: authResponse.tokens!.accessToken,
+          refreshToken: authResponse.tokens!.refreshToken,
+        );
+        print('✅ [네이버 백엔드 로그인] 기존 회원 - 토큰 저장 완료');
+        // 토큰 저장 후 캐시 삭제
+        _cachedNaverUser = null;
+      } else if (authResponse.signupRequired) {
+        print('ℹ️ [네이버 백엔드 로그인] 신규 회원 - 회원가입 필요');
+      }
+
+      return authResponse;
+    } catch (e) {
+      print('❌ [네이버 백엔드 로그인] 에러: $e');
+      _cachedNaverUser = null;
       rethrow;
     }
   }
@@ -146,7 +200,7 @@ class SocialLoginService {
   ///
   /// 1. 백엔드 로그아웃 (Refresh Token 삭제)
   /// 2. 로컬 토큰 삭제
-  /// 3. 카카오 SDK 로그아웃
+  /// 3. 소셜 SDK 로그아웃 (카카오, 네이버)
   /// 4. 캐시 삭제
   Future<void> logout() async {
     try {
@@ -156,15 +210,27 @@ class SocialLoginService {
       // 2. 로컬 토큰 삭제
       await _tokenStorage.clearTokens();
 
-      // 3. 카카오 SDK 로그아웃
-      await KakaoLoginService.logout();
+      // 3. 소셜 SDK 로그아웃
+      try {
+        await KakaoLoginService.logout();
+      } catch (e) {
+        print('⚠️ [로그아웃] 카카오 로그아웃 실패 (무시): $e');
+      }
+
+      try {
+        await NaverLoginService.logout();
+      } catch (e) {
+        print('⚠️ [로그아웃] 네이버 로그아웃 실패 (무시): $e');
+      }
 
       // 4. 캐시 삭제
       _cachedKakaoUser = null;
+      _cachedNaverUser = null;
     } catch (e) {
       // 에러가 발생해도 로컬 토큰과 캐시는 삭제
       await _tokenStorage.clearTokens();
       _cachedKakaoUser = null;
+      _cachedNaverUser = null;
       rethrow;
     }
   }

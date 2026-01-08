@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:moit/core/utils/share_link_utils.dart';
+import 'package:moit/features/home/presentation/screens/meet_03.dart';
 import 'package:moit/features/home/presentation/screens/meet_07.dart';
 import 'package:moit/features/meeting/providers/meeting_provider.dart';
 import 'package:moit/features/meeting/providers/vote_provider.dart';
@@ -214,7 +215,17 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
     return GestureDetector(
       onTap: () {
         if (index == 0) {
-          Navigator.pop(context);
+          // 초대 탭 클릭 시 meet_03으로 이동
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Meet03Screen(
+                meetingName: widget.meetingName,
+                meetingId: widget.meetingId,
+                initialTab: 0,
+              ),
+            ),
+          );
         } else {
           setState(() {
             _selectedTab = index;
@@ -380,6 +391,13 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
                           duration: Duration(seconds: 2),
                         ),
                       );
+                      return;
+                    }
+
+                    // ✨ 추가: isLoading 체크 (중복 클릭 방지)
+                    final voteState = ref.read(voteProvider(widget.meetingId!));
+                    if (voteState.isLoading) {
+                      print('⚠️ [Meet09] 이미 확정 처리 중입니다.');
                       return;
                     }
 

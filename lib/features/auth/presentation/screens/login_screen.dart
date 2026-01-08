@@ -152,11 +152,21 @@ class LoginScreen extends ConsumerWidget {
 
         // 네이버 로그인
         OAuthButton.naver(
-          onPressed: () {
-            // TODO: 네이버 로그인 로직 구현
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('네이버 로그인은 준비 중입니다')),
-            );
+          onPressed: () async {
+            // 네이버 로그인 실행
+            await ref.read(authProvider.notifier).loginWithNaver();
+
+            // 로그인 후 상태 확인
+            if (!context.mounted) return;
+            final newState = ref.read(authProvider);
+
+            if (newState.isAuthenticated) {
+              // 기존 회원 → 홈 화면으로
+              context.go('/');
+            } else if (newState.requiresSignup) {
+              // 신규 회원 → 회원가입 화면으로
+              context.push('/signup/detail');
+            }
           },
         ),
       ],

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 네이버 로그인 설정 -->
+    <string name="naver_client_id">5ZEfwS4Xbhyvy1DeHLZ5</string>
+    <string name="naver_client_secret">dkCLKGEL8M</string>
+    <string name="naver_client_name">모잇</string>
+</resources>

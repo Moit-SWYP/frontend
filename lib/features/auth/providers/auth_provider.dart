@@ -125,6 +125,52 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// 네이버 로그인
+  Future<void> loginWithNaver() async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    try {
+      print('🚀 [Auth] 네이버 로그인 시작');
+      final authResponse = await _socialLoginService.loginWithNaver();
+
+      if (authResponse.signupRequired) {
+        // 신규 회원 - 회원가입 필요
+        print('🆕 [Auth] 신규 회원 - 회원가입 필요');
+        // TODO: 네이버 사용자 정보 캐싱 구현
+        state = state.copyWith(
+          isLoading: false,
+          isAuthenticated: false,
+          // naverUser: cachedNaverUser, // 추후 구현
+        );
+      } else {
+        // 기존 회원 - 로그인 완료
+        print('✅ [Auth] 네이버 기존 회원 로그인 성공');
+        print('✅ [Auth] AccessToken: ${authResponse.tokens?.accessToken?.substring(0, 20)}...');
+
+        state = state.copyWith(
+          isLoading: false,
+          isAuthenticated: true,
+          tokens: authResponse.tokens,
+        );
+
+        print('🔄 [Auth] 네이버 인증 상태 업데이트 완료 - isAuthenticated: ${state.isAuthenticated}');
+        print('🔄 [Auth] 프로필 자동 로드 시작...');
+
+        await _ref.read(userProfileProvider.notifier).loadProfile();
+
+        print('🔄 [Auth] 프로필 자동 로드 완료');
+        final profileState = _ref.read(userProfileProvider);
+        print('🔄 [Auth] 현재 프로필 상태 - hasProfile: ${profileState.hasProfile}, displayName: ${profileState.displayName}');
+      }
+    } catch (e) {
+      print('❌ [Auth] 네이버 로그인 실패: $e');
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString(),
+      );
+    }
+  }
+
   /// 회원가입
   Future<void> signup({
     required String nickname,

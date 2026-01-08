@@ -168,6 +168,9 @@ class VoteNotifier extends StateNotifier<VoteState> {
       await _voteClient.confirmDate(meetingId);
       print('✅ [Vote] 날짜 확정 성공');
 
+      // ✨ 변경: loadVoteSummary 호출 전 isLoading 해제
+      state = state.copyWith(isLoading: false);
+
       // 확정 후 요약 다시 로드
       await loadVoteSummary();
 

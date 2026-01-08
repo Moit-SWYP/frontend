@@ -1003,6 +1003,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               children: [
                 // 참여자 아바타 스택
                 SizedBox(
+                  width: displayParticipants.isEmpty ? 24 : (displayParticipants.length - 1) * 18.0 + 24,
                   height: 24,
                   child: Stack(
                     children: [
@@ -1033,7 +1034,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ],
                   ),
                 ),
-                SizedBox(width: displayParticipants.length * 18.0 + 8),
+                const SizedBox(width: 8),
 
                 // 나머지 참여자 수
                 if (remainingCount > 0)

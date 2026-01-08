@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:moit/core/utils/share_link_utils.dart';
 import 'package:moit/features/home/presentation/screens/meet_07.dart';
+import 'package:moit/features/home/presentation/screens/meet_09.dart';
+import 'package:moit/features/home/presentation/screens/meet_17.dart';
 import 'package:moit/features/meeting/providers/meeting_provider.dart';
+import 'package:moit/features/meeting/providers/vote_provider.dart';
+import 'package:moit/features/meeting/data/models/meeting_brief.dart';
 
 /// 모임 만들기 3단계 - 친구 초대 화면
 class Meet03Screen extends ConsumerStatefulWidget {
@@ -153,19 +157,122 @@ class _Meet03ScreenState extends ConsumerState<Meet03Screen> {
     final isSelected = _selectedTab == index;
 
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         if (index == 1) {
-          // 일정 탭 클릭 시 meet_07로 이동
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => Meet07Screen(
-                meetingName: widget.meetingName,
-                meetingId: widget.meetingId,
-                initialTab: 1,
+          // 일정 탭 클릭 시 투표 상태 확인
+          if (widget.meetingId == null) {
+            // meetingId가 없으면 meet_07로 이동
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => Meet07Screen(
+                  meetingName: widget.meetingName,
+                  meetingId: widget.meetingId,
+                  initialTab: 1,
+                ),
               ),
+            );
+            return;
+          }
+
+          // 로딩 표시
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const Center(
+              child: CircularProgressIndicator(),
             ),
           );
+
+          try {
+            // 투표 요약 로드
+            await ref
+                .read(voteProvider(widget.meetingId!).notifier)
+                .loadVoteSummary();
+
+            if (!mounted) return;
+
+            final voteState = ref.read(voteProvider(widget.meetingId!));
+
+            // 로딩 다이얼로그 닫기
+            Navigator.pop(context);
+
+            // 투표 상태에 따라 화면 이동
+            final isCreatedStatus = voteState.summary?.meetingStatus == MeetingStatus.created;
+            final hasNotVoted = !voteState.hasVotedDate;
+
+            if (isCreatedStatus && hasNotVoted) {
+              // CREATED 상태이고 투표하지 않았으면 meet_07로 이동
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Meet07Screen(
+                    meetingName: widget.meetingName,
+                    meetingId: widget.meetingId,
+                    initialTab: 1,
+                  ),
+                ),
+              );
+            } else {
+              // 이미 투표했으면 meet_09(모임장) 또는 meet_17(모임원)로 이동
+              final isHost = voteState.summary?.isHost ?? false;
+
+              // 투표한 날짜 변환
+              final votedDatesStr = voteState.summary?.dateSummary?.votedDates ?? [];
+              final votedDates = votedDatesStr.map((dateStr) {
+                try {
+                  return DateTime.parse(dateStr);
+                } catch (e) {
+                  print('⚠️ [Meet03] 날짜 파싱 실패: $dateStr');
+                  return null;
+                }
+              }).whereType<DateTime>().toSet();
+
+              if (isHost) {
+                // 모임장: meet_09
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Meet09Screen(
+                      meetingId: widget.meetingId,
+                      meetingName: widget.meetingName,
+                      votedDates: votedDates,
+                    ),
+                  ),
+                );
+              } else {
+                // 모임원: meet_17
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Meet17Screen(
+                      meetingId: widget.meetingId!,
+                      meetingName: widget.meetingName,
+                      votedDates: votedDates,
+                    ),
+                  ),
+                );
+              }
+            }
+          } catch (e) {
+            print('❌ [Meet03] 투표 상태 확인 실패: $e');
+            if (!mounted) return;
+
+            // 로딩 다이얼로그 닫기
+            Navigator.pop(context);
+
+            // 에러 시 기본적으로 meet_07로 이동
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => Meet07Screen(
+                  meetingName: widget.meetingName,
+                  meetingId: widget.meetingId,
+                  initialTab: 1,
+                ),
+              ),
+            );
+          }
         } else {
           setState(() {
             _selectedTab = index;
