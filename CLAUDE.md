@@ -14,11 +14,13 @@ moit is a Flutter-based social scheduling and voting application. It allows user
 
 ### Development Context
 
-**Role**: Frontend development using Flutter.
+**Role**: You are working with a frontend developer who specializes in Flutter development.
 
 **Backend Integration**: The backend team provides REST APIs documented in Swagger. Frontend development focuses on integrating these pre-built APIs into the Flutter application.
 
 **API Documentation**: Swagger specifications serve as the source of truth for API contracts, request/response structures, and endpoint behaviors.
+
+**API Availability**: All available backend APIs are documented in Swagger. If a required API endpoint is missing or insufficient for a feature implementation, you must inform the user so they can communicate with the backend development team to request the necessary API additions or modifications.
 
 ## Architecture Overview
 
@@ -65,6 +67,27 @@ The backend response follows the structure: `{ "code": "SUCCESS", "message": "..
 - **Member** (`isHost: false`): Can only vote and view results.
 
 **UI Differentiation**: Use `isHost` to toggle visibility of "Confirm" (확정하기) vs "Vote" (투표하기) buttons.
+
+**CRITICAL: Host vs Member Separation**
+
+Throughout the entire voting UI and process, you MUST maintain clear separation between Host and Member roles:
+
+1. **Screen Variants**: Although some screens may be shared, the user experience differs significantly based on role. A user may see different screens when they are the Host versus when they are a Member.
+
+2. **Voting Process Differentiation**:
+   - **Host Flow**: Includes additional capabilities such as confirming (확정하기) dates/times, modifying meeting settings, and managing the overall meeting lifecycle.
+   - **Member Flow**: Restricted to voting (투표하기) and viewing results without modification privileges.
+
+3. **UI Component Behavior**: Every voting-related component must check `isHost` and adapt its behavior accordingly. This includes:
+   - Action buttons (Confirm vs Vote)
+   - Edit/delete capabilities
+   - Navigation flows
+   - Available menu options
+   - Information display hierarchy
+
+4. **State Management**: Providers and state logic must account for role-based permissions when determining which actions are available and which API endpoints to call.
+
+**Implementation Guideline**: When developing or modifying any voting-related feature, always ask: "How should this behave differently for a Host vs a Member?" and implement accordingly.
 
 ### 3. Home Dashboard Message Priority
 

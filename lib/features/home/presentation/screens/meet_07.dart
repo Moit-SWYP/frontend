@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:moit/core/utils/share_link_utils.dart';
 import 'package:moit/features/home/presentation/screens/meet_09.dart';
+import 'package:moit/features/meeting/providers/meeting_provider.dart';
+import 'package:moit/features/meeting/providers/vote_provider.dart';
 
 /// 모임 만들기 7단계 - 날짜 투표 화면
-class Meet07Screen extends StatefulWidget {
+class Meet07Screen extends ConsumerStatefulWidget {
   final String meetingName;
+  final int? meetingId;
   final int initialTab;
   final Set<DateTime>? initialSelectedDates;
   final bool openCalendarOnInit;
@@ -13,16 +17,19 @@ class Meet07Screen extends StatefulWidget {
   const Meet07Screen({
     super.key,
     required this.meetingName,
+    this.meetingId,
     this.initialTab = 1,
     this.initialSelectedDates,
     this.openCalendarOnInit = false,
   });
 
   @override
-  State<Meet07Screen> createState() => _Meet07ScreenState();
+  ConsumerState<Meet07Screen> createState() => _Meet07ScreenState();
 }
 
-class _Meet07ScreenState extends State<Meet07Screen> {
+class _Meet07ScreenState extends ConsumerState<Meet07Screen> {
+  bool _isGeneratingLink = false;
+  String? _invitationLink;
   late int _selectedTab; // 0: 초대, 1: 일정
 
   @override
@@ -365,7 +372,7 @@ class _Meet07ScreenState extends State<Meet07Screen> {
 
                 // 완료 버튼
                 GestureDetector(
-                  onTap: () {
+                  onTap: () async {
                     if (_selectedDates.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -376,17 +383,64 @@ class _Meet07ScreenState extends State<Meet07Screen> {
                       return;
                     }
 
-                    // meet_09로 이동
-                    Navigator.pop(context); // 바텀시트 닫기
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => Meet09Screen(
-                          meetingName: widget.meetingName,
-                          votedDates: _selectedDates,
-                        ),
+                    // 로딩 표시
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const Center(
+                        child: CircularProgressIndicator(),
                       ),
                     );
+
+                    // 날짜 투표 API 호출
+                    bool voteSuccess = false;
+                    if (widget.meetingId != null) {
+                      final dateStrings = _selectedDates
+                          .map((date) =>
+                            '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}')
+                          .toList();
+
+                      print('📋 [Meet07] 날짜 투표 시작: $dateStrings');
+
+                      voteSuccess = await ref
+                          .read(voteProvider(widget.meetingId!).notifier)
+                          .voteDates(dateStrings);
+                    }
+
+                    // 로딩 닫기
+                    if (!mounted) return;
+                    Navigator.pop(context);  // 로딩 다이얼로그 닫기
+
+                    // 결과 처리
+                    if (voteSuccess) {
+                      print('✅ [Meet07] 날짜 투표 성공 → meet_09 이동');
+
+                      // 바텀시트 닫기
+                      Navigator.pop(context);
+
+                      // meet_09로 이동
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => Meet09Screen(
+                            meetingName: widget.meetingName,
+                            meetingId: widget.meetingId,
+                            votedDates: _selectedDates,
+                          ),
+                        ),
+                      );
+                    } else {
+                      print('❌ [Meet07] 날짜 투표 실패');
+
+                      // 에러 메시지 표시
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('투표에 실패했습니다. 다시 시도해주세요.'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
                   },
                   child: Container(
                     width: double.infinity,
@@ -551,10 +605,13 @@ class _Meet07ScreenState extends State<Meet07Screen> {
         d.year == date.year && d.month == date.month && d.day == date.day
       );
       final isToday = _isSameDay(date, DateTime.now());
+      // 오늘 날짜의 시작 시간 (00:00:00)
+      final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+      final isPastDate = date.isBefore(today);
 
       dayWidgets.add(
         GestureDetector(
-          onTap: () {
+          onTap: isPastDate ? null : () {
             setModalState(() {
               if (isSelected) {
                 _selectedDates.removeWhere((d) =>
@@ -579,11 +636,13 @@ class _Meet07ScreenState extends State<Meet07Screen> {
             child: Text(
               '$day',
               style: TextStyle(
-                color: isSelected
-                    ? Colors.white
-                    : isToday
-                        ? const Color(0xFF1A49F1)
-                        : const Color(0xFF111111),
+                color: isPastDate
+                    ? const Color(0xFFCCCCCC) // 과거 날짜는 회색 처리
+                    : isSelected
+                        ? Colors.white
+                        : isToday
+                            ? const Color(0xFF1A49F1)
+                            : const Color(0xFF111111),
                 fontSize: 14,
                 fontFamily: 'Pretendard',
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
@@ -617,17 +676,76 @@ class _Meet07ScreenState extends State<Meet07Screen> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  /// 클립보드에 링크 복사
-  void _copyLinkToClipboard() {
-    const linkUrl = 'http://약속링크 주소 url';
-    Clipboard.setData(const ClipboardData(text: linkUrl));
+  /// 링크 공유 다이얼로그
+  void _copyLinkToClipboard() async {
+    // 모임 ID가 없으면 에러 표시
+    if (widget.meetingId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('모임 정보를 찾을 수 없습니다.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('링크가 복사되었습니다'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    // 링크가 이미 생성되었으면 바로 다이얼로그 표시
+    if (_invitationLink != null) {
+      ShareLinkUtils.showLinkDialog(context, _invitationLink!);
+      return;
+    }
+
+    // 링크 생성 중 표시
+    setState(() {
+      _isGeneratingLink = true;
+    });
+
+    try {
+      print('🔗 [Meet07] 초대 링크 생성 시작: meetingId=${widget.meetingId}');
+
+      final invitationLink = await ref
+          .read(meetingProvider.notifier)
+          .getInvitationLink(widget.meetingId!);
+
+      if (!mounted) return;
+
+      if (invitationLink != null) {
+        print('✅ [Meet07] 초대 링크 생성 성공: $invitationLink');
+        setState(() {
+          _invitationLink = invitationLink;
+          _isGeneratingLink = false;
+        });
+        ShareLinkUtils.showLinkDialog(context, invitationLink);
+      } else {
+        print('❌ [Meet07] 초대 링크 생성 실패');
+        setState(() {
+          _isGeneratingLink = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('초대 링크 생성에 실패했습니다.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ [Meet07] 초대 링크 생성 에러: $e');
+      if (!mounted) return;
+
+      setState(() {
+        _isGeneratingLink = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('초대 링크 생성 중 오류가 발생했습니다.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
 }

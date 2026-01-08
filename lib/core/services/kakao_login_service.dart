@@ -23,10 +23,19 @@ class KakaoLoginService {
       bool installed = await isKakaoTalkInstalled();
 
       if (installed) {
-        // 카카오톡으로 로그인
-        await UserApi.instance.loginWithKakaoTalk();
+        try {
+          // 카카오톡으로 로그인 시도
+          print('📱 [카카오 로그인] 카카오톡 앱으로 로그인 시도');
+          await UserApi.instance.loginWithKakaoTalk();
+        } catch (e) {
+          // 카카오톡 로그인 실패 시 → 카카오 계정 로그인으로 전환
+          print('⚠️ [카카오 로그인] 카카오톡 로그인 실패 → 카카오 계정 로그인으로 전환');
+          print('⚠️ [카카오 로그인] 에러 상세: $e');
+          await UserApi.instance.loginWithKakaoAccount();
+        }
       } else {
         // 카카오 계정으로 로그인
+        print('📱 [카카오 로그인] 카카오 계정으로 로그인');
         await UserApi.instance.loginWithKakaoAccount();
       }
 

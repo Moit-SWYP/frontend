@@ -371,6 +371,20 @@ class VoteNotifier extends StateNotifier<VoteState> {
     }
   }
 
+  /// 모든 투표된 날짜 조회 (limit 크게 설정)
+  Future<List<String>> getAllVotedDates() async {
+    try {
+      print('🔄 [Vote] 모든 투표된 날짜 조회');
+      // limit을 100으로 설정하여 모든 투표 날짜 가져오기
+      final dates = await _voteClient.getTopDates(meetingId, limit: 100);
+      print('✅ [Vote] 모든 투표된 날짜 조회 성공: ${dates.length}개');
+      return dates;
+    } catch (e) {
+      print('❌ [Vote] 모든 투표된 날짜 조회 실패: $e');
+      return [];
+    }
+  }
+
   /// 에러 메시지 클리어
   void clearError() {
     if (state.errorMessage != null) {

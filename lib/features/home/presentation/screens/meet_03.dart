@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:moit/core/utils/share_link_utils.dart';
 import 'package:moit/features/home/presentation/screens/meet_07.dart';
 import 'package:moit/features/meeting/providers/meeting_provider.dart';
 
@@ -31,7 +31,6 @@ class _Meet03ScreenState extends ConsumerState<Meet03Screen> {
     _selectedTab = widget.initialTab;
   }
   final TextEditingController _searchController = TextEditingController();
-  bool _isLinkCopied = false;
   bool _isGeneratingLink = false;
   String? _invitationLink;
   final Set<String> _selectedFriends = {}; // 선택된 친구 ID들
@@ -162,6 +161,7 @@ class _Meet03ScreenState extends ConsumerState<Meet03Screen> {
             MaterialPageRoute(
               builder: (context) => Meet07Screen(
                 meetingName: widget.meetingName,
+                meetingId: widget.meetingId,
                 initialTab: 1,
               ),
             ),
@@ -583,7 +583,7 @@ class _Meet03ScreenState extends ConsumerState<Meet03Screen> {
 
     // 링크가 이미 생성되었으면 바로 다이얼로그 표시
     if (_invitationLink != null) {
-      _showLinkDialog(_invitationLink!);
+      ShareLinkUtils.showLinkDialog(context, _invitationLink!);
       return;
     }
 
@@ -607,7 +607,7 @@ class _Meet03ScreenState extends ConsumerState<Meet03Screen> {
           _invitationLink = invitationLink;
           _isGeneratingLink = false;
         });
-        _showLinkDialog(invitationLink);
+        ShareLinkUtils.showLinkDialog(context, invitationLink);
       } else {
         print('❌ [Meet03] 초대 링크 생성 실패');
         setState(() {
@@ -639,119 +639,4 @@ class _Meet03ScreenState extends ConsumerState<Meet03Screen> {
     }
   }
 
-  /// 링크 다이얼로그 표시
-  void _showLinkDialog(String linkUrl) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    '약속방 링크 공유하기',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFF111111),
-                      fontSize: 18,
-                      fontFamily: 'Pretendard',
-                      fontWeight: FontWeight.w700,
-                      height: 1.33,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    '약속방 링크를 친구에게 공유하고\n모잇에서 편리하게 약속을 정해보세요!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFF505050),
-                      fontSize: 13,
-                      fontFamily: 'Pretendard',
-                      fontWeight: FontWeight.w400,
-                      height: 1.38,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // 링크 박스
-                  GestureDetector(
-                    onTap: () {
-                      _copyLinkToClipboard(linkUrl);
-                      setDialogState(() {
-                        _isLinkCopied = true;
-                      });
-                      // 2초 후 원래 색상으로 복귀
-                      Future.delayed(const Duration(seconds: 2), () {
-                        if (mounted) {
-                          setDialogState(() {
-                            _isLinkCopied = false;
-                          });
-                        }
-                      });
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: ShapeDecoration(
-                        color: _isLinkCopied
-                            ? const Color(0xFFE8EDFE) // main010 (복사 후)
-                            : const Color(0xFFE9EBEE), // grey040 (기본)
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              linkUrl,
-                              style: TextStyle(
-                                color: _isLinkCopied
-                                    ? const Color(0xFF1A49F1) // main050 (복사 후)
-                                    : const Color(0xFF999999), // color-disable (기본)
-                                fontSize: 16,
-                                fontFamily: 'Pretendard',
-                                fontWeight: FontWeight.w400,
-                                height: 1.50,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          SvgPicture.asset(
-                            'assets/icons/copy.svg',
-                            width: 18,
-                            height: 18,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  /// 클립보드에 링크 복사
-  void _copyLinkToClipboard(String linkUrl) {
-    Clipboard.setData(ClipboardData(text: linkUrl));
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('링크가 복사되었습니다'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
 }

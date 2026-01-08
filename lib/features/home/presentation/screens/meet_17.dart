@@ -6,13 +6,13 @@ import 'package:moit/features/home/presentation/screens/meet_07.dart';
 import 'package:moit/features/meeting/providers/meeting_provider.dart';
 import 'package:moit/features/meeting/providers/vote_provider.dart';
 
-/// 모임 만들기 9단계 - 날짜 투표 확인 화면
-class Meet09Screen extends ConsumerStatefulWidget {
+/// 모임원용 투표 결과 확인 화면
+class Meet17Screen extends ConsumerStatefulWidget {
   final int? meetingId; // nullable: 모임 생성 중에는 null
   final String meetingName;
   final Set<DateTime> votedDates;
 
-  const Meet09Screen({
+  const Meet17Screen({
     super.key,
     this.meetingId, // optional
     required this.meetingName,
@@ -20,10 +20,10 @@ class Meet09Screen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<Meet09Screen> createState() => _Meet09ScreenState();
+  ConsumerState<Meet17Screen> createState() => _Meet17ScreenState();
 }
 
-class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
+class _Meet17ScreenState extends ConsumerState<Meet17Screen> {
   int _selectedTab = 1; // 0: 초대, 1: 일정
   bool _isCalendarExpanded = false;
   late PageController _pageController;
@@ -44,7 +44,7 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
     // 화면 진입 시 투표 요약 로드 (meetingId가 있을 때만)
     if (widget.meetingId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        print('📋 [Meet09] 투표 요약 로드 시작: ${widget.meetingId}');
+        print('📋 [Meet17] 투표 요약 로드 시작: ${widget.meetingId}');
         ref.read(voteProvider(widget.meetingId!).notifier).loadVoteSummary();
         _loadAllVotedDates();
       });
@@ -66,15 +66,15 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
             try {
               return DateTime.parse(dateStr);
             } catch (e) {
-              print('⚠️ [Meet09] 날짜 파싱 실패: $dateStr');
+              print('⚠️ [Meet17] 날짜 파싱 실패: $dateStr');
               return null;
             }
           }).whereType<DateTime>().toSet();
         });
-        print('✅ [Meet09] 모든 투표 날짜 로드 완료: ${_allVotedDates.length}개');
+        print('✅ [Meet17] 모든 투표 날짜 로드 완료: ${_allVotedDates.length}개');
       }
     } catch (e) {
-      print('❌ [Meet09] 모든 투표 날짜 로드 실패: $e');
+      print('❌ [Meet17] 모든 투표 날짜 로드 실패: $e');
     }
   }
 
@@ -363,63 +363,9 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
 
           const SizedBox(height: 16),
 
-          // 버튼들
+          // 버튼들 (모임원은 확정하기 버튼 없음)
           Row(
             children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () async {
-                    // meetingId가 없으면 (모임 생성 중) 아무것도 안 함
-                    print('🔍 [Meet09] 확정하기 버튼 클릭: meetingId=${widget.meetingId}');
-                    if (widget.meetingId == null) {
-                      print('❌ [Meet09] meetingId가 null입니다!');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('모임 생성을 완료한 후 날짜를 확정할 수 있습니다'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                      return;
-                    }
-
-                    // 날짜 확정 API 호출
-                    final success = await ref
-                        .read(voteProvider(widget.meetingId!).notifier)
-                        .confirmDate();
-
-                    if (success && mounted) {
-                      setState(() {
-                        _isCalendarExpanded = false;
-                      });
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: ShapeDecoration(
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        side: const BorderSide(
-                          width: 1.5,
-                          color: Color(0xFF1A49F1),
-                        ),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                    child: const Text(
-                      '확정하기',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xFF1A49F1),
-                        fontSize: 14,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w400,
-                        height: 1.43,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
               Expanded(
                 child: GestureDetector(
                   onTap: () {
@@ -830,7 +776,7 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
         try {
           dates.add(DateTime.parse(dateStr));
         } catch (e) {
-          print('⚠️ [Meet09] 날짜 파싱 실패: $dateStr');
+          print('⚠️ [Meet17] 날짜 파싱 실패: $dateStr');
         }
       }
     }
@@ -1218,7 +1164,7 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
     });
 
     try {
-      print('🔗 [Meet09] 초대 링크 생성 시작: meetingId=${widget.meetingId}');
+      print('🔗 [Meet17] 초대 링크 생성 시작: meetingId=${widget.meetingId}');
 
       final invitationLink = await ref
           .read(meetingProvider.notifier)
@@ -1227,14 +1173,14 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
       if (!mounted) return;
 
       if (invitationLink != null) {
-        print('✅ [Meet09] 초대 링크 생성 성공: $invitationLink');
+        print('✅ [Meet17] 초대 링크 생성 성공: $invitationLink');
         setState(() {
           _invitationLink = invitationLink;
           _isGeneratingLink = false;
         });
         ShareLinkUtils.showLinkDialog(context, invitationLink);
       } else {
-        print('❌ [Meet09] 초대 링크 생성 실패');
+        print('❌ [Meet17] 초대 링크 생성 실패');
         setState(() {
           _isGeneratingLink = false;
         });
@@ -1247,7 +1193,7 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
         );
       }
     } catch (e) {
-      print('❌ [Meet09] 초대 링크 생성 에러: $e');
+      print('❌ [Meet17] 초대 링크 생성 에러: $e');
       if (!mounted) return;
 
       setState(() {
