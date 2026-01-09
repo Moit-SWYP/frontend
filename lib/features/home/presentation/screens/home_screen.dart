@@ -60,18 +60,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   /// 우선순위 기반 모임 선택 (D-day 카드용)
+  /// D-day 카드는 날짜가 확정된 모임 표시 (시간 확정 여부 무관)
+  /// dateVoted (날짜만 확정) 또는 fixed (날짜+시간 확정) 모두 포함
   /// 1순위: 오늘 확정된 모임
-  /// 2순위: 투표 중인 모임 (가장 먼저 생성된 것)
-  /// 3순위: 7일 이내 확정된 모임 (가장 가까운 것)
+  /// 2순위: 7일 이내 확정된 모임 (가장 가까운 것)
   MeetingBriefWithParticipants? _findPriorityMeeting(List<MeetingBriefWithParticipants> meetings) {
     if (meetings.isEmpty) return null;
 
     final today = DateTime.now();
     final todayMidnight = DateTime(today.year, today.month, today.day);
 
-    // 1순위: 오늘 확정된 모임
+    // 1순위: 오늘 확정된 모임 (날짜가 확정된 모임)
     for (final meeting in meetings) {
-      if (meeting.date == null || meeting.status != MeetingStatus.fixed) continue;
+      // 날짜가 null이면 제외
+      if (meeting.date == null) continue;
+
+      // dateVoted 또는 fixed 상태만 포함
+      if (meeting.status != MeetingStatus.dateVoted &&
+          meeting.status != MeetingStatus.fixed) continue;
 
       try {
         final meetingDate = DateTime.parse(meeting.date!);
@@ -84,24 +90,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     }
 
-    // 2순위: 투표 중인 모임 (가장 먼저 생성된 것)
-    final votingMeetings = meetings.where((meeting) {
-      return meeting.status == MeetingStatus.dateVoting ||
-          meeting.status == MeetingStatus.timeVoting ||
-          meeting.status == MeetingStatus.placeVoting ||
-          meeting.status == MeetingStatus.created;
-    }).toList();
-
-    if (votingMeetings.isNotEmpty) {
-      return votingMeetings.reduce((a, b) => a.meetingId < b.meetingId ? a : b);
-    }
-
-    // 3순위: 7일 이내 확정된 모임 (가장 가까운 것)
+    // 2순위: 7일 이내 확정된 모임 (가장 가까운 것)
     MeetingBriefWithParticipants? closestMeeting;
     int? smallestDays;
 
     for (final meeting in meetings) {
-      if (meeting.date == null || meeting.status != MeetingStatus.fixed) continue;
+      // 날짜가 null이면 제외
+      if (meeting.date == null) continue;
+
+      // dateVoted 또는 fixed 상태만 포함
+      if (meeting.status != MeetingStatus.dateVoted &&
+          meeting.status != MeetingStatus.fixed) continue;
 
       final daysUntil = _calculateDaysUntilMeeting(meeting.date);
       if (daysUntil == null || daysUntil < 0 || daysUntil > 7) continue;
@@ -125,6 +124,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     print('🏠 [Home] waitingMeetings.length: ${homeState.homeData?.waitingMeetings.length ?? 0}');
     print('🏠 [Home] isLoading: ${homeState.isLoading}');
 
+    // 디버그: 각 모임의 상태 출력
+    if (homeState.homeData != null) {
+      for (final meeting in homeState.homeData!.homeMeetings) {
+        print('🔍 [Home] homeMeeting: ${meeting.meetingId} - status: ${meeting.status} - date: ${meeting.date}');
+      }
+      for (final meeting in homeState.homeData!.waitingMeetings) {
+        print('🔍 [Home] waitingMeeting: ${meeting.meetingId} - status: ${meeting.status} - date: ${meeting.date}');
+      }
+    }
+
     // 에러 메시지가 있으면 SnackBar 표시
     if (homeState.errorMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -144,6 +153,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final priorityMeeting = homeState.homeData != null
         ? _findPriorityMeeting(homeState.homeData!.homeMeetings)
         : null;
+
+    print('🎯 [Home] priorityMeeting: ${priorityMeeting?.meetingId} - ${priorityMeeting?.status}');
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -455,70 +466,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   List<Widget> _buildMeetingContent(HomeState homeState, MeetingBriefWithParticipants? closestMeeting) {
     final widgets = <Widget>[];
 
-    // D-day 카드 (가장 가까운 모임)
-    if (closestMeeting != null) {
-      widgets.add(_buildDDayCard(closestMeeting));
-      widgets.add(const SizedBox(height: 24));
-    }
-
-    // 친구들이 기다려요 섹션 (homeMeetings)
+    // D-day 카드들 (날짜가 확정된 모임들 - 가로 스크롤)
     if (homeState.hasHomeMeetings) {
-      widgets.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              '친구들이 기다려요',
-              style: TextStyle(
-                color: Color(0xFF111111),
-                fontSize: 16,
-                fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w700,
-                height: 1.5,
-              ),
-            ),
-            GestureDetector(
-              onTap: () {
-                // TODO: 전체 모임 목록 화면으로 이동
-                print('📋 [Home] 더보기 클릭');
-              },
-              child: const Text(
-                '더보기',
-                style: TextStyle(
-                  color: Color(0xFF999999),
-                  fontSize: 13,
-                  fontFamily: 'Pretendard',
-                  fontWeight: FontWeight.w400,
-                  height: 1.38,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-      widgets.add(const SizedBox(height: 12));
+      // 날짜가 확정된 모임들 필터링 (dateVoted 또는 fixed)
+      final confirmedMeetings = homeState.homeData!.homeMeetings
+          .where((meeting) =>
+              meeting.date != null &&
+              (meeting.status == MeetingStatus.dateVoted ||
+                  meeting.status == MeetingStatus.fixed))
+          .toList();
 
-      // 모임 카드들 (최대 3개)
-      final displayMeetings = homeState.homeData!.homeMeetings.take(3).toList();
-      for (final meeting in displayMeetings) {
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _buildMeetingCard(meeting),
-          ),
-        );
+      if (confirmedMeetings.isNotEmpty) {
+        widgets.add(_buildDDayCarousel(confirmedMeetings));
+        widgets.add(const SizedBox(height: 24));
       }
     }
 
-    // 승인 대기 중 섹션 (waitingMeetings)
+    // 일정 이야기 중 섹션 (waitingMeetings)
+    // 사용자가 아직 투표하지 않은 모든 모임
     if (homeState.hasWaitingMeetings) {
-      if (homeState.hasHomeMeetings) {
+      if (closestMeeting != null) {
         widgets.add(const SizedBox(height: 24));
       }
 
       widgets.add(
         const Text(
-          '친구들이 기다려요',
+          '일정 이야기 중',
           style: TextStyle(
             color: Color(0xFF111111),
             fontSize: 16,
@@ -543,14 +516,66 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return widgets;
   }
 
-  /// D-day 카드 (우선순위 모임)
-  Widget _buildDDayCard(MeetingBriefWithParticipants meeting) {
-    // 투표 중인 모임인지 확인
-    final isVoting = meeting.status == MeetingStatus.dateVoting ||
-        meeting.status == MeetingStatus.timeVoting ||
-        meeting.status == MeetingStatus.placeVoting ||
-        meeting.status == MeetingStatus.created;
+  /// D-day 카드 캐러셀 (가로 스크롤)
+  Widget _buildDDayCarousel(List<MeetingBriefWithParticipants> meetings) {
+    final PageController pageController = PageController();
+    int currentPage = 0;
 
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return Column(
+          children: [
+            // 카드 캐러셀
+            SizedBox(
+              height: 280,
+              child: PageView.builder(
+                controller: pageController,
+                itemCount: meetings.length,
+                onPageChanged: (index) {
+                  setState(() {
+                    currentPage = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _buildDDayCard(meetings[index]),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // 페이지 인디케이터
+            if (meetings.length > 1)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  meetings.length,
+                  (index) => Container(
+                    width: index == currentPage ? 24 : 8,
+                    height: 8,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: ShapeDecoration(
+                      color: index == currentPage
+                          ? const Color(0xFF7692F7) /* main030 */
+                          : const Color(0xFFE9EBEE) /* grey040 */,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(index == currentPage ? 24 : 32),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// D-day 카드 (개별 카드) - 회색 배경 디자인
+  Widget _buildDDayCard(MeetingBriefWithParticipants meeting) {
     final daysUntil = _calculateDaysUntilMeeting(meeting.date);
     final dDayText = daysUntil == null
         ? ''
@@ -650,43 +675,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
       },
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
+        width: 328,
+        padding: const EdgeInsets.all(16),
         decoration: ShapeDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment(-1.00, -0.00),
-            end: Alignment(1, 0),
-            colors: [Color(0xFF1A49F1), Color(0xFF4A6FFF)],
-          ),
+          color: const Color(0xFFF7F8F9),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          shadows: const [
-            BoxShadow(
-              color: Color(0x3D1A49F1),
-              blurRadius: 20,
-              offset: Offset(0, 4),
-              spreadRadius: 0,
-            ),
-          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 배지: 투표 중이면 "일정 이야기 중", 확정되었으면 D-day
-            if (isVoting || dDayText.isNotEmpty)
+            // D-day 배지
+            if (dDayText.isNotEmpty)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: ShapeDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: const Color(0xFFE8EDFE),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
                 child: Text(
-                  isVoting ? '일정 이야기 중' : dDayText,
+                  dDayText,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF1A49F1),
                     fontSize: 14,
                     fontFamily: 'Pretendard',
                     fontWeight: FontWeight.w700,
@@ -701,11 +714,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Text(
               meeting.title,
               style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
+                color: Color(0xFF111111),
+                fontSize: 18,
                 fontFamily: 'Pretendard',
                 fontWeight: FontWeight.w700,
-                height: 1.4,
+                height: 1.44,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -713,26 +726,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             const SizedBox(height: 12),
 
-            // 날짜 및 위치 (임시로 강남역 2번 출구 표시)
+            // 날짜 및 위치
             if (meeting.date != null)
-              Text(
-                '${DateFormatter.toKoreanDate(meeting.date)} · 강남역 2번 출구',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
-                  fontSize: 14,
-                  fontFamily: 'Pretendard',
-                  fontWeight: FontWeight.w400,
-                  height: 1.43,
-                ),
+              Row(
+                children: [
+                  Text(
+                    DateFormatter.toKoreanDate(meeting.date),
+                    style: const TextStyle(
+                      color: Color(0xFF666666),
+                      fontSize: 13,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w400,
+                      height: 1.38,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Container(
+                    width: 2,
+                    height: 2,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF666666),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Text(
+                    '강남역 2번 출구',
+                    style: TextStyle(
+                      color: Color(0xFF666666),
+                      fontSize: 13,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w400,
+                      height: 1.38,
+                    ),
+                  ),
+                ],
               ),
 
             const SizedBox(height: 16),
 
-            // 참여자 아바타
+            // 참여자 아바타 + 캐릭터 아이콘 플레이스홀더
             Row(
               children: [
                 // 참여자 아바타 스택
                 SizedBox(
+                  width: displayParticipants.isEmpty
+                      ? 32
+                      : (displayParticipants.length - 1) * 24.0 + 32,
                   height: 32,
                   child: Stack(
                     children: [
@@ -742,13 +782,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           child: Container(
                             width: 32,
                             height: 32,
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
-                              border: Border.all(
-                                color: const Color(0xFF1A49F1),
-                                width: 2,
-                              ),
                             ),
                             child: ClipOval(
                               child: SvgPicture.asset(
@@ -763,29 +799,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ],
                   ),
                 ),
-                SizedBox(width: displayParticipants.length * 24.0 + 12),
+
+                const SizedBox(width: 8),
 
                 // 나머지 참여자 수
                 if (remainingCount > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: ShapeDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      '+$remainingCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w600,
-                        height: 1.38,
-                      ),
+                  Text(
+                    '+$remainingCount',
+                    style: const TextStyle(
+                      color: Color(0xFF666666),
+                      fontSize: 13,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w400,
+                      height: 1.38,
                     ),
                   ),
+
+                const Spacer(),
+
+                // 캐릭터 아이콘 플레이스홀더
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFC5C8CE),
+                    shape: BoxShape.circle,
+                  ),
+                ),
               ],
             ),
 
@@ -801,7 +841,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: ShapeDecoration(
-                  color: Colors.white,
+                  color: const Color(0xFF1A49F1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -810,7 +850,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   '코스보기',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF1A49F1),
+                    color: Colors.white,
                     fontSize: 14,
                     fontFamily: 'Pretendard',
                     fontWeight: FontWeight.w700,

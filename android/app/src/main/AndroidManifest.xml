@@ -70,7 +70,14 @@
         <!-- 네이버 로그인 Bridge Activity -->
         <activity
             android:name="com.navercorp.nid.oauth.NidOAuthBridgeActivity"
-            android:exported="false" />
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="moitswyp" />
+            </intent-filter>
+        </activity>
 
         <!-- 네이버 로그인 Redirect Activity -->
         <activity

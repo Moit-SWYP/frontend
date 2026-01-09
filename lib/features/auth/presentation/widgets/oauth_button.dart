@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:moit/core/constants/app_colors.dart';
 import 'package:moit/core/constants/app_text_styles.dart';
 
@@ -27,7 +28,11 @@ class OAuthButton extends StatelessWidget {
       text: '카카오로 시작하기',
       backgroundColor: AppColors.kakaoYellow,
       textColor: Colors.black,
-      icon: const Icon(Icons.chat_bubble, color: Colors.black, size: 20),
+      icon: SvgPicture.asset(
+        'assets/icons/kakao_logo.svg',
+        width: 20,
+        height: 20,
+      ),
       onPressed: onPressed,
     );
   }
