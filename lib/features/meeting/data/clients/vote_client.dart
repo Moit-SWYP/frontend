@@ -154,12 +154,14 @@ class VoteClient {
   /// POST /api/meetings/{meetingId}/votes/times
   Future<void> voteTimes(int meetingId, TimeVoteRequest request) async {
     try {
+      final jsonData = request.toJson();
       print('🌐 [VoteClient] POST /api/meetings/$meetingId/votes/times');
       print('  - times: ${request.times}');
+      print('  - JSON data: $jsonData');
 
       await _dioClient.post(
         '/api/meetings/$meetingId/votes/times',
-        data: request.toJson(),
+        data: jsonData,
       );
 
       print('✅ [VoteClient] 시간 투표 성공');

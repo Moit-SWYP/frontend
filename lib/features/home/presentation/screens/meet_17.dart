@@ -5,6 +5,7 @@ import 'package:moit/core/utils/share_link_utils.dart';
 import 'package:moit/features/home/presentation/screens/meet_07.dart';
 import 'package:moit/features/meeting/providers/meeting_provider.dart';
 import 'package:moit/features/meeting/providers/vote_provider.dart';
+import 'package:moit/features/meeting/data/models/vote_summary_response.dart';
 
 /// 모임원용 투표 결과 확인 화면
 class Meet17Screen extends ConsumerStatefulWidget {
@@ -33,6 +34,8 @@ class _Meet17ScreenState extends ConsumerState<Meet17Screen> {
   bool _isGeneratingLink = false;
   String? _invitationLink;
   Set<DateTime> _allVotedDates = {}; // 모든 투표된 날짜 (날짜 후보)
+  bool _isTimeExpanded = false; // 시간 섹션 드롭다운 상태
+  String? _selectedTimeSlot; // 선택된 시간 슬롯 (투표자 정보 표시용)
 
   @override
   void initState() {
@@ -1031,110 +1034,639 @@ class _Meet17ScreenState extends ConsumerState<Meet17Screen> {
 
   /// 만나는 시간 섹션
   Widget _buildTimeSection() {
+    final voteState = widget.meetingId != null
+        ? ref.watch(voteProvider(widget.meetingId!))
+        : null;
+    final hasVotedTime = voteState?.summary?.timeSummary != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 헤더
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              '만나는 시간',
-              style: TextStyle(
-                color: Color(0xFF111111), // txt-primary
-                fontSize: 18,
-                fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w700,
-                height: 1.33,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: ShapeDecoration(
-                color: const Color(0xFFC5C8CE), // grey050
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                '투표 전',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontFamily: 'Pretendard',
-                  fontWeight: FontWeight.w500,
-                  height: 1.50,
-                  letterSpacing: -0.33,
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 16),
-
-        // 투표 카드
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: ShapeDecoration(
-            color: const Color(0xFFF7F8F9), // grey030
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        GestureDetector(
+          onTap: hasVotedTime
+              ? () {
+                  setState(() {
+                    _isTimeExpanded = !_isTimeExpanded;
+                  });
+                }
+              : null,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                '아직 일정이 정해지지 않았어요',
+                '만나는 시간',
                 style: TextStyle(
-                  color: Color(0xFF505050), // txt-secondary
-                  fontSize: 13,
+                  color: Color(0xFF111111),
+                  fontSize: 18,
                   fontFamily: 'Pretendard',
-                  fontWeight: FontWeight.w400,
-                  height: 1.38,
+                  fontWeight: FontWeight.w700,
+                  height: 1.33,
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // 투표하기 버튼
-              GestureDetector(
-                onTap: () {
-                  // TODO: 시간 투표 화면으로 이동
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('시간 투표 화면은 추후 구현 예정입니다'),
-                      duration: Duration(seconds: 2),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: ShapeDecoration(
+                      color: hasVotedTime
+                          ? const Color(0xFF102C91) // main070 (투표 완료)
+                          : const Color(0xFFC5C8CE), // grey050 (투표 전)
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                  );
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: ShapeDecoration(
-                    color: const Color(0xFF1A49F1), // main050
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  child: const Text(
-                    '투표하기',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontFamily: 'Pretendard',
-                      fontWeight: FontWeight.w400,
-                      height: 1.43,
+                    child: Text(
+                      hasVotedTime ? '투표 완료' : '투표 전',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w500,
+                        height: 1.50,
+                        letterSpacing: -0.33,
+                      ),
                     ),
                   ),
-                ),
+                  if (hasVotedTime) ...[
+                    const SizedBox(width: 8),
+                    Icon(
+                      _isTimeExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      size: 24,
+                      color: const Color(0xFF111111),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
         ),
+
+        const SizedBox(height: 16),
+
+        // 투표 전: 투표하기 버튼만 표시
+        if (!hasVotedTime)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: ShapeDecoration(
+              color: const Color(0xFFF7F8F9),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '아직 일정이 정해지지 않았어요',
+                  style: TextStyle(
+                    color: Color(0xFF505050),
+                    fontSize: 13,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w400,
+                    height: 1.38,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () async {
+                    final selectedTimes = await _showTimePickerBottomSheet();
+
+                    if (selectedTimes != null && selectedTimes.isNotEmpty && mounted) {
+                      final success = await ref
+                          .read(voteProvider(widget.meetingId!).notifier)
+                          .voteTimes(selectedTimes.toList());
+
+                      if (success && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('시간 투표가 완료되었습니다'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: ShapeDecoration(
+                      color: const Color(0xFF1A49F1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    child: const Text(
+                      '투표하기',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w400,
+                        height: 1.43,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // 투표 후: 드롭다운으로 투표 결과 표시
+        if (hasVotedTime && _isTimeExpanded && voteState?.summary?.timeSummary != null)
+          _buildTimeVoteResult(voteState!.summary!.timeSummary!),
       ],
+    );
+  }
+
+  /// 시간 생성 유틸리티: 30분 간격 시간 목록 생성 (00:00 ~ 23:30)
+  List<String> _generateTimeSlots() {
+    final times = <String>[];
+    for (int hour = 0; hour < 24; hour++) {
+      times.add('${hour.toString().padLeft(2, '0')}:00');
+      times.add('${hour.toString().padLeft(2, '0')}:30');
+    }
+    return times;
+  }
+
+  /// HH:mm 형식을 12시간 형식으로 변환 (예: "14:30" → "오후 02:30")
+  String _formatTimeToDisplay(String time) {
+    final parts = time.split(':');
+    final hour = int.parse(parts[0]);
+    final minute = parts[1];
+
+    final period = hour < 12 ? '오전' : '오후';
+    final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+
+    return '$period ${displayHour.toString().padLeft(2, '0')}:$minute';
+  }
+
+  /// 시간 선택 Bottom Sheet
+  Future<Set<String>?> _showTimePickerBottomSheet() async {
+    final timeSlots = _generateTimeSlots();
+    Set<String> selectedTimes = {};
+
+    return showModalBottomSheet<Set<String>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.7,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 헤더
+                  const Text(
+                    '시간 정하기',
+                    style: TextStyle(
+                      color: Color(0xFF111111),
+                      fontSize: 18,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w700,
+                      height: 1.33,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 시간 목록 (단일 열)
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: timeSlots.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final time = timeSlots[index];
+                        final isSelected = selectedTimes.contains(time);
+                        final displayTime = _formatTimeToDisplay(time);
+                        final parts = displayTime.split(' ');
+                        final period = parts[0]; // "오전" or "오후"
+                        final timeStr = parts[1]; // "12:00"
+
+                        return GestureDetector(
+                          onTap: () {
+                            setModalState(() {
+                              if (isSelected) {
+                                selectedTimes.remove(time);
+                              } else {
+                                selectedTimes.add(time);
+                              }
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF7F8F9),
+                              border: isSelected
+                                  ? Border.all(color: const Color(0xFF486DF4), width: 1)
+                                  : null,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      timeStr,
+                                      style: const TextStyle(
+                                        color: Color(0xFF111111),
+                                        fontSize: 13,
+                                        fontFamily: 'Pretendard',
+                                        fontWeight: FontWeight.w500,
+                                        height: 1.38,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      period == '오전' ? 'AM' : 'PM',
+                                      style: const TextStyle(
+                                        color: Color(0xFF111111),
+                                        fontSize: 13,
+                                        fontFamily: 'Pretendard',
+                                        fontWeight: FontWeight.w500,
+                                        height: 1.38,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (isSelected)
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF486DF4),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  )
+                                else
+                                  const SizedBox(width: 24, height: 24),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // 완료 버튼
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context, selectedTimes);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: ShapeDecoration(
+                        color: const Color(0xFF1A49F1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      child: const Text(
+                        '완료',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontFamily: 'Pretendard',
+                          fontWeight: FontWeight.w700,
+                          height: 1.43,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// 시간 투표 결과 표시
+  Widget _buildTimeVoteResult(TimeSummary timeSummary) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFF7F8F9),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 최다 득표 시간 표시
+          _buildTopTimeDisplay(timeSummary.topTimes),
+
+          const SizedBox(height: 16),
+
+          // Top 3 시간 카드
+          _buildTimeCards(timeSummary.votedTimes),
+
+          const SizedBox(height: 24),
+
+          // 선택된 시간의 투표자 정보
+          if (_selectedTimeSlot != null)
+            _buildAvailablePeopleForTime(_selectedTimeSlot!),
+
+          if (_selectedTimeSlot != null) const SizedBox(height: 24),
+
+          // 수정하기 버튼
+          _buildEditButton(),
+        ],
+      ),
+    );
+  }
+
+  /// 최다 득표 시간 표시
+  Widget _buildTopTimeDisplay(List<String> topTimes) {
+    if (topTimes.isEmpty) return const SizedBox.shrink();
+
+    final topTime = topTimes.first;
+    final displayTime = _formatTimeToDisplay(topTime);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          displayTime,
+          style: const TextStyle(
+            color: Color(0xFF020101),
+            fontSize: 18,
+            fontFamily: 'Pretendard',
+            fontWeight: FontWeight.w700,
+            height: 1.33,
+          ),
+        ),
+        const SizedBox(width: 4),
+        const Text(
+          '유력해요!',
+          style: TextStyle(
+            color: Color(0xFF505050),
+            fontSize: 13,
+            fontFamily: 'Pretendard',
+            fontWeight: FontWeight.w400,
+            height: 1.38,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Top 3 시간 카드
+  Widget _buildTimeCards(List<VotedTimeResponse> votedTimes) {
+    // votedTimes를 count 기준으로 내림차순 정렬
+    final sortedTimes = [...votedTimes]..sort((a, b) => b.count.compareTo(a.count));
+
+    // 상위 3개만 표시
+    final topThree = sortedTimes.take(3).toList();
+
+    // 첫 번째 카드 자동 선택
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_selectedTimeSlot == null && topThree.isNotEmpty) {
+        setState(() {
+          _selectedTimeSlot = topThree.first.time;
+        });
+      }
+    });
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: topThree.asMap().entries.map((entry) {
+          final votedTime = entry.value;
+          final isSelected = _selectedTimeSlot == votedTime.time;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedTimeSlot = votedTime.time;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFFA3B6F9) : const Color(0xFFFDFDFD),
+                  border: isSelected
+                      ? null
+                      : Border.all(width: 1, color: const Color(0xFFC5C8CE)),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      _formatTimeToDisplay(votedTime.time),
+                      style: const TextStyle(
+                        color: Color(0xFF111111),
+                        fontSize: 16,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w700,
+                        height: 1.50,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${votedTime.count}',
+                      style: const TextStyle(
+                        color: Color(0xFF505050),
+                        fontSize: 14,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w700,
+                        height: 1.43,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  /// 특정 시간에 투표한 사람들 표시
+  Widget _buildAvailablePeopleForTime(String time) {
+    return FutureBuilder<VotersResponse?>(
+      future: ref.read(voteProvider(widget.meetingId!).notifier).getTimeVoters(time),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data == null) {
+          return const SizedBox.shrink();
+        }
+
+        final voters = snapshot.data!.voters;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Text(
+                  '만날 수 있는 사람',
+                  style: TextStyle(
+                    color: Color(0xFF111111),
+                    fontSize: 18,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w700,
+                    height: 1.33,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${voters.length}',
+                  style: const TextStyle(
+                    color: Color(0xFF505050),
+                    fontSize: 14,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w700,
+                    height: 1.43,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: voters.map((voter) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: SizedBox(
+                      width: 40,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: ShapeDecoration(
+                              color: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              alignment: Alignment.center,
+                              child: SvgPicture.asset(
+                                _getCharacterIconPath(voter.characterType),
+                                width: 32,
+                                height: 32,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            voter.nickname,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xFF111111),
+                              fontSize: 14,
+                              fontFamily: 'Pretendard',
+                              fontWeight: FontWeight.w400,
+                              height: 1.43,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// 캐릭터 타입을 아이콘 경로로 변환
+  String _getCharacterIconPath(String characterType) {
+    final type = characterType.toLowerCase();
+    return 'assets/icons/character/${type}_S.svg';
+  }
+
+  /// 수정하기 버튼
+  Widget _buildEditButton() {
+    return GestureDetector(
+      onTap: () async {
+        final selectedTimes = await _showTimePickerBottomSheet();
+
+        if (selectedTimes != null && selectedTimes.isNotEmpty && mounted) {
+          final success = await ref
+              .read(voteProvider(widget.meetingId!).notifier)
+              .voteTimes(selectedTimes.toList());
+
+          if (success && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('시간 투표가 수정되었습니다'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: ShapeDecoration(
+          color: const Color(0xFF1A49F1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+        child: const Text(
+          '수정하기',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontFamily: 'Pretendard',
+            fontWeight: FontWeight.w400,
+            height: 1.43,
+          ),
+        ),
+      ),
     );
   }
 
