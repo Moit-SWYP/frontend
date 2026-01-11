@@ -483,27 +483,63 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     // 일정 이야기 중 섹션 (waitingMeetings)
-    // 사용자가 아직 투표하지 않은 모든 모임
+    // 사용자가 아직 투표하지 않은 모든 모임 (최대 3개까지 표시)
     if (homeState.hasWaitingMeetings) {
       if (closestMeeting != null) {
         widgets.add(const SizedBox(height: 24));
       }
 
+      // 섹션 헤더 (제목 + 더보기 버튼)
       widgets.add(
-        const Text(
-          '일정 이야기 중',
-          style: TextStyle(
-            color: Color(0xFF111111),
-            fontSize: 16,
-            fontFamily: 'Pretendard',
-            fontWeight: FontWeight.w700,
-            height: 1.5,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text(
+              '일정 이야기 중',
+              style: TextStyle(
+                color: Color(0xFF111111),
+                fontSize: 18,
+                fontFamily: 'Pretendard',
+                fontWeight: FontWeight.w700,
+                height: 1.33,
+              ),
+            ),
+            // 더보기 버튼 (항상 표시)
+            GestureDetector(
+              onTap: () {
+                // TODO: vote_home 화면으로 이동
+                print('📋 [Home] 더보기 버튼 클릭 → vote_home 이동');
+                // context.push('/vote-home');
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '더보기',
+                      style: TextStyle(
+                        color: Color(0xFF999999),
+                        fontSize: 13,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w400,
+                        height: 1.38,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       );
       widgets.add(const SizedBox(height: 12));
 
-      for (final meeting in homeState.homeData!.waitingMeetings) {
+      // waitingMeetings 최대 3개까지만 표시
+      final displayMeetings = homeState.homeData!.waitingMeetings.take(3).toList();
+
+      for (final meeting in displayMeetings) {
         widgets.add(
           Padding(
             padding: const EdgeInsets.only(bottom: 12),

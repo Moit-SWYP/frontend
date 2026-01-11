@@ -974,11 +974,13 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: const Color(0xFFF7F8F9),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 유력한 시간 표시 (헤더 부분 - 항상 표시)
@@ -988,38 +990,51 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                     _isTimeDropdownExpanded = !_isTimeDropdownExpanded;
                   });
                 },
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      topTime,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF020101),
-                        fontSize: 18,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w700,
-                        height: 1.33,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            topTime,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xFF020101),
+                              fontSize: 18,
+                              fontFamily: 'Pretendard',
+                              fontWeight: FontWeight.w700,
+                              height: 1.33,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            '유력해요!',
+                            style: TextStyle(
+                              color: Color(0xFF505050),
+                              fontSize: 13,
+                              fontFamily: 'Pretendard',
+                              fontWeight: FontWeight.w400,
+                              height: 1.38,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      '유력해요!',
-                      style: TextStyle(
-                        color: Color(0xFF505050),
-                        fontSize: 13,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w400,
-                        height: 1.38,
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: Icon(
+                          _isTimeDropdownExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                          size: 24,
+                          color: const Color(0xFF111111),
+                        ),
                       ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      _isTimeDropdownExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                      size: 24,
-                      color: const Color(0xFF111111),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
 
@@ -1084,11 +1099,25 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
 
               // 확정하기 / 수정하기 버튼 (항상 표시)
               Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     child: GestureDetector(
                       onTap: () async {
                         print('📝 [MeetingDetail] 시간 확정하기 클릭');
+
+                        // ✅ 투표 가능 상태 재확인
+                        final currentVoteState = ref.read(voteProvider(widget.meeting.meetingId));
+                        if (currentVoteState.isFixed) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('이미 확정된 모임입니다.'),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                          return;
+                        }
 
                         // 투표 데이터가 있는지 확인
                         if (timeSummary?.topTimes.isEmpty ?? true) {
@@ -1145,16 +1174,22 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                           ),
                           borderRadius: BorderRadius.circular(999),
                         ),
-                        child: const Text(
-                          '확정하기',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFF1A49F1),
-                            fontSize: 14,
-                            fontFamily: 'Pretendard',
-                            fontWeight: FontWeight.w400,
-                            height: 1.43,
-                          ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: const [
+                            Text(
+                              '확정하기',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Color(0xFF1A49F1),
+                                fontSize: 14,
+                                fontFamily: 'Pretendard',
+                                fontWeight: FontWeight.w400,
+                                height: 1.43,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -1172,16 +1207,22 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                           color: const Color(0xFF1A49F1),
                           borderRadius: BorderRadius.circular(999),
                         ),
-                        child: const Text(
-                          '수정하기',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontFamily: 'Pretendard',
-                            fontWeight: FontWeight.w400,
-                            height: 1.43,
-                          ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: const [
+                            Text(
+                              '수정하기',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontFamily: 'Pretendard',
+                                fontWeight: FontWeight.w400,
+                                height: 1.43,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
