@@ -1114,8 +1114,8 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
         ? ref.watch(voteProvider(widget.meetingId!))
         : null;
 
-    // 시간 투표 완료 여부 확인
-    final hasVotedTime = voteState?.summary?.timeSummary != null;
+    // 시간 투표 완료 여부 확인 (VoteState의 hasVotedTime getter 사용)
+    final hasVotedTime = voteState?.hasVotedTime ?? false;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1181,7 +1181,10 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
         const SizedBox(height: 16),
 
         // 투표 전 상태: 투표하기 버튼
-        if (!hasVotedTime)
+        // 조건: 시간 투표 가능한 상태이고, 아직 투표하지 않았고, 모임이 확정되지 않은 상태
+        if (!hasVotedTime &&
+            (voteState?.isTimeVoting ?? false) &&
+            !(voteState?.isFixed ?? false))
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -1211,6 +1214,18 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
                   onTap: () async {
                     // meetingId가 없으면 아무것도 안 함
                     if (widget.meetingId == null) return;
+
+                    // ✅ 투표 가능 상태 재확인 (안전장치)
+                    final currentVoteState = ref.read(voteProvider(widget.meetingId!));
+                    if (currentVoteState.isFixed || !currentVoteState.isTimeVoting) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('현재 시간 투표를 진행할 수 없는 상태입니다.'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                      return;
+                    }
 
                     // Bottom Sheet 표시 및 선택된 시간들 받기
                     final selectedTimes = await _showTimePickerBottomSheet();

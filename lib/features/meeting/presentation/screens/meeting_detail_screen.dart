@@ -38,6 +38,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
   bool _isLoadingVoters = false;
   bool _isGeneratingLink = false;
   String? _invitationLink;
+  bool _isTimeDropdownExpanded = true; // 시간 드롭다운 펼침 상태 (기본값: 펼침)
 
   @override
   bool get wantKeepAlive => true;
@@ -898,24 +899,26 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: hasVotedTime ? const Color(0xFF1A49F1) : const Color(0xFFE9EBEE),
-              borderRadius: BorderRadius.circular(20),
+              color: const Color(0xFF1A49F1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(
-              hasVotedTime ? '투표 완료' : '투표 전',
+            child: const Text(
+              '투표 중',
               style: TextStyle(
-                color: hasVotedTime ? Colors.white : const Color(0xFF999999),
-                fontSize: 12,
+                color: Colors.white,
+                fontSize: 13,
                 fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
+                height: 1.50,
+                letterSpacing: -0.33,
               ),
             ),
           ),
         ],
       ),
-      const SizedBox(height: 4),
+      const SizedBox(height: 16),
 
       // 모임원: 투표 전 안내 메시지 또는 투표하기 버튼
       if (!isHost && !hasVotedTime)
@@ -966,140 +969,264 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
           ],
         ),
 
-      // 유력 시간 안내 (투표 후)
-      if (hasVotedTime && topTime != null)
+      // 모임장: 시간 투표 후 유력한 시간 표시 및 버튼
+      if (isHost && hasVotedTime && topTime != null)
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: const Color(0xFFF7F8F9),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(20),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 20,
-                height: 20,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFF1A49F1),
-                ),
-                child: const Icon(
-                  Icons.check,
-                  size: 14,
-                  color: Colors.white,
+              // 유력한 시간 표시 (헤더 부분 - 항상 표시)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isTimeDropdownExpanded = !_isTimeDropdownExpanded;
+                  });
+                },
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      topTime,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Color(0xFF020101),
+                        fontSize: 18,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w700,
+                        height: 1.33,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text(
+                      '유력해요!',
+                      style: TextStyle(
+                        color: Color(0xFF505050),
+                        fontSize: 13,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w400,
+                        height: 1.38,
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      _isTimeDropdownExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      size: 24,
+                      color: const Color(0xFF111111),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '$topTime 유력해요!',
-                  style: const TextStyle(
-                    color: Color(0xFF111111),
-                    fontSize: 14,
-                    fontFamily: 'Pretendard',
-                    fontWeight: FontWeight.w600,
+
+              // 드롭다운 펼쳤을 때만 표시되는 시간 목록
+              if (_isTimeDropdownExpanded && timeSummary?.votedTimes.isNotEmpty == true) ...[
+                const SizedBox(height: 16),
+                ...timeSummary!.votedTimes.map((votedTime) {
+                  final isSelected = _selectedTime == votedTime.time;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: GestureDetector(
+                      onTap: () => _onTimeSelected(votedTime.time),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFFE8EEFF) : Colors.white,
+                          border: Border.all(
+                            color: isSelected ? const Color(0xFF1A49F1) : const Color(0xFFE9EBEE),
+                            width: isSelected ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              votedTime.time,
+                              style: TextStyle(
+                                color: isSelected ? const Color(0xFF1A49F1) : const Color(0xFF111111),
+                                fontSize: 16,
+                                fontFamily: 'Pretendard',
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFF1A49F1)
+                                    : const Color(0xFFF7F8F9),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '${votedTime.count}명',
+                                style: TextStyle(
+                                  color: isSelected ? Colors.white : const Color(0xFF666666),
+                                  fontSize: 13,
+                                  fontFamily: 'Pretendard',
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+
+              const SizedBox(height: 16),
+
+              // 확정하기 / 수정하기 버튼 (항상 표시)
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        print('📝 [MeetingDetail] 시간 확정하기 클릭');
+
+                        // 투표 데이터가 있는지 확인
+                        if (timeSummary?.topTimes.isEmpty ?? true) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('시간 투표 데이터가 없습니다.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+
+                        // 확정 확인 다이얼로그
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('시간 확정'),
+                            content: const Text('최다 득표 시간으로 확정하시겠습니까?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('취소'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('확정'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirmed == true && mounted) {
+                          final success = await ref
+                              .read(voteProvider(widget.meeting.meetingId).notifier)
+                              .confirmTime();
+
+                          if (success && mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('시간이 확정되었습니다.'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(
+                            width: 1.50,
+                            color: const Color(0xFF1A49F1),
+                          ),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          '확정하기',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFF1A49F1),
+                            fontSize: 14,
+                            fontFamily: 'Pretendard',
+                            fontWeight: FontWeight.w400,
+                            height: 1.43,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        print('📝 [MeetingDetail] 시간 수정하기 클릭');
+                        // TODO: 시간 수정 로직
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A49F1),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          '수정하기',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontFamily: 'Pretendard',
+                            fontWeight: FontWeight.w400,
+                            height: 1.43,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
 
-      if (hasVotedTime && topTime != null) const SizedBox(height: 16),
-
-      // 시간대 칩 리스트 (투표 후 - 상위 3개, meet22 스타일)
+      // 모임원: 시간대 칩 리스트 (투표 후 - 상위 3개, meet22 스타일)
       if (!isHost && hasVotedTime && timeSummary?.votedTimes.isNotEmpty == true)
-        Row(
-          children: timeSummary!.votedTimes.take(3).map((votedTime) {
-            final isSelected = _selectedTime == votedTime.time;
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: () => _onTimeSelected(votedTime.time),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFE8EEFF) : Colors.white,
-                      border: Border.all(
-                        color: isSelected ? const Color(0xFF1A49F1) : const Color(0xFFE9EBEE),
-                        width: isSelected ? 2 : 1,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          votedTime.time,
-                          style: TextStyle(
-                            color: isSelected ? const Color(0xFF1A49F1) : const Color(0xFF111111),
-                            fontSize: 16,
-                            fontFamily: 'Pretendard',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${votedTime.count}',
-                          style: TextStyle(
-                            color: isSelected ? const Color(0xFF1A49F1) : const Color(0xFF666666),
-                            fontSize: 14,
-                            fontFamily: 'Pretendard',
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-
-      // 방장용: 전체 시간대 리스트
-      if (isHost && timeSummary?.votedTimes.isNotEmpty == true)
-        ...timeSummary!.votedTimes.map((votedTime) {
-          final isSelected = _selectedTime == votedTime.time;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: GestureDetector(
-              onTap: () => _onTimeSelected(votedTime.time),
-              child: Container(
-                padding: const EdgeInsets.all(16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 유력 시간 안내
+            if (topTime != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFE8EEFF) : Colors.white,
-                  border: Border.all(
-                    color: isSelected ? const Color(0xFF1A49F1) : const Color(0xFFE9EBEE),
-                    width: isSelected ? 2 : 1,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFFF7F8F9),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      votedTime.time,
-                      style: TextStyle(
-                        color: isSelected ? const Color(0xFF1A49F1) : const Color(0xFF111111),
-                        fontSize: 16,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w600,
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF1A49F1),
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        size: 14,
+                        color: Colors.white,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFF1A49F1)
-                            : const Color(0xFFF7F8F9),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                    const SizedBox(width: 8),
+                    Expanded(
                       child: Text(
-                        '${votedTime.count}명',
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : const Color(0xFF666666),
-                          fontSize: 13,
+                        '$topTime 유력해요!',
+                        style: const TextStyle(
+                          color: Color(0xFF111111),
+                          fontSize: 14,
                           fontFamily: 'Pretendard',
                           fontWeight: FontWeight.w600,
                         ),
@@ -1108,9 +1235,56 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                   ],
                 ),
               ),
+            if (topTime != null) const SizedBox(height: 16),
+            Row(
+              children: timeSummary!.votedTimes.take(3).map((votedTime) {
+                final isSelected = _selectedTime == votedTime.time;
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: GestureDetector(
+                      onTap: () => _onTimeSelected(votedTime.time),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFFE8EEFF) : Colors.white,
+                          border: Border.all(
+                            color: isSelected ? const Color(0xFF1A49F1) : const Color(0xFFE9EBEE),
+                            width: isSelected ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              votedTime.time,
+                              style: TextStyle(
+                                color: isSelected ? const Color(0xFF1A49F1) : const Color(0xFF111111),
+                                fontSize: 16,
+                                fontFamily: 'Pretendard',
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${votedTime.count}',
+                              style: TextStyle(
+                                color: isSelected ? const Color(0xFF1A49F1) : const Color(0xFF666666),
+                                fontSize: 14,
+                                fontFamily: 'Pretendard',
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
-          );
-        }).toList(),
+          ],
+        ),
 
       if (hasVotedTime) const SizedBox(height: 24),
 
