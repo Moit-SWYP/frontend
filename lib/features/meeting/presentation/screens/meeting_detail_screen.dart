@@ -857,11 +857,11 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
       print('🕐 [MeetingDetail] 선택된 시간: $selectedTime');
 
       // 시간 투표 API 호출
-      final success = await ref
+      final timeSummary = await ref
           .read(voteProvider(widget.meeting.meetingId).notifier)
           .voteTimes([selectedTime]);
 
-      if (success && mounted) {
+      if (timeSummary != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('시간 투표가 완료되었습니다.'),

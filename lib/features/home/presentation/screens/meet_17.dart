@@ -1136,11 +1136,11 @@ class _Meet17ScreenState extends ConsumerState<Meet17Screen> {
                     final selectedTimes = await _showTimePickerBottomSheet();
 
                     if (selectedTimes != null && selectedTimes.isNotEmpty && mounted) {
-                      final success = await ref
+                      final timeSummary = await ref
                           .read(voteProvider(widget.meetingId!).notifier)
                           .voteTimes(selectedTimes.toList());
 
-                      if (success && mounted) {
+                      if (timeSummary != null && mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('시간 투표가 완료되었습니다'),
@@ -1632,11 +1632,11 @@ class _Meet17ScreenState extends ConsumerState<Meet17Screen> {
         final selectedTimes = await _showTimePickerBottomSheet();
 
         if (selectedTimes != null && selectedTimes.isNotEmpty && mounted) {
-          final success = await ref
+          final timeSummary = await ref
               .read(voteProvider(widget.meetingId!).notifier)
               .voteTimes(selectedTimes.toList());
 
-          if (success && mounted) {
+          if (timeSummary != null && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('시간 투표가 수정되었습니다'),

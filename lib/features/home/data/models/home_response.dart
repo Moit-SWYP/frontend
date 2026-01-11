@@ -48,6 +48,7 @@ class MeetingBriefWithParticipants {
   final String title;
   final MeetingStatus status;
   final String? date; // yyyy-MM-dd format
+  final String? time; // HH:mm format
   @JsonKey(defaultValue: [])
   final List<ParticipantInfo> participants;
 
@@ -56,6 +57,7 @@ class MeetingBriefWithParticipants {
     required this.title,
     required this.status,
     this.date,
+    this.time,
     required this.participants,
   });
 

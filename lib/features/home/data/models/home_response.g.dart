@@ -47,6 +47,7 @@ MeetingBriefWithParticipants _$MeetingBriefWithParticipantsFromJson(
       title: json['title'] as String,
       status: $enumDecode(_$MeetingStatusEnumMap, json['status']),
       date: json['date'] as String?,
+      time: json['time'] as String?,
       participants: (json['participants'] as List<dynamic>?)
               ?.map((e) => ParticipantInfo.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -60,6 +61,7 @@ Map<String, dynamic> _$MeetingBriefWithParticipantsToJson(
       'title': instance.title,
       'status': _$MeetingStatusEnumMap[instance.status]!,
       'date': instance.date,
+      'time': instance.time,
       'participants': instance.participants,
     };
 

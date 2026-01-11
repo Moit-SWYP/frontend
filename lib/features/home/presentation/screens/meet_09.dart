@@ -397,16 +397,23 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
                     }
 
                     // ✨ 추가: isLoading 체크 (중복 클릭 방지)
-                    final voteState = ref.read(voteProvider(widget.meetingId!));
-                    if (voteState.isLoading) {
+                    final voteStateBefore = ref.read(voteProvider(widget.meetingId!));
+                    print('🔍 [Meet09] 확정하기 전 상태: isLoading=${voteStateBefore.isLoading}');
+                    if (voteStateBefore.isLoading) {
                       print('⚠️ [Meet09] 이미 확정 처리 중입니다.');
                       return;
                     }
 
                     // 날짜 확정 API 호출
+                    print('🚀 [Meet09] confirmDate() 호출 시작');
                     final success = await ref
                         .read(voteProvider(widget.meetingId!).notifier)
                         .confirmDate();
+                    print('✅ [Meet09] confirmDate() 완료: success=$success');
+
+                    // 확정 후 상태 확인
+                    final voteStateAfter = ref.read(voteProvider(widget.meetingId!));
+                    print('🔍 [Meet09] 확정하기 후 상태: isLoading=${voteStateAfter.isLoading}');
 
                     if (success && mounted) {
                       setState(() {
@@ -1149,7 +1156,7 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
                       ),
                     ),
                     child: Text(
-                      hasVotedTime ? '투표 완료' : '투표 전',
+                      hasVotedTime ? '투표 중' : '투표 전',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 13,
@@ -1210,11 +1217,11 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
 
                     if (selectedTimes != null && selectedTimes.isNotEmpty && mounted) {
                       // VoteProvider를 통해 시간 투표 제출
-                      final success = await ref
+                      final timeSummary = await ref
                           .read(voteProvider(widget.meetingId!).notifier)
                           .voteTimes(selectedTimes.toList());
 
-                      if (success && mounted) {
+                      if (timeSummary != null && mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('시간 투표가 완료되었습니다'),
@@ -1222,16 +1229,17 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
                           ),
                         );
 
-                        // 투표 완료 후 첫 번째 시간 카드 자동 선택
-                        final timeSummary = voteState?.summary?.timeSummary;
-                        if (timeSummary != null && timeSummary.votedTimes.isNotEmpty) {
-                          final sortedTimes = [...timeSummary.votedTimes]
-                            ..sort((a, b) => b.count.compareTo(a.count));
-                          setState(() {
+                        // ✅ timeSummary가 반환되었으므로 무조건 성공
+                        setState(() {
+                          _isTimeExpanded = true;
+
+                          // 첫 번째 시간 카드 자동 선택
+                          if (timeSummary.votedTimes.isNotEmpty) {
+                            final sortedTimes = [...timeSummary.votedTimes]
+                              ..sort((a, b) => b.count.compareTo(a.count));
                             _selectedTimeSlot = sortedTimes.first.time;
-                            _isTimeExpanded = true;
-                          });
-                        }
+                          }
+                        });
                       }
                     }
                   },
@@ -1778,8 +1786,20 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
 
           if (_selectedTimeSlot != null) const SizedBox(height: 26),
 
-          // 4. 수정하기 버튼
-          _buildEditButton(),
+          // 4. 확정하기 + 수정하기 버튼
+          Row(
+            children: [
+              // 확정하기 버튼
+              Expanded(
+                child: _buildConfirmButton(),
+              ),
+              const SizedBox(width: 12),
+              // 수정하기 버튼
+              Expanded(
+                child: _buildEditButton(),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -2011,6 +2031,53 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
     return 'assets/icons/character/${type}_S.svg';
   }
 
+  /// 확정하기 버튼
+  Widget _buildConfirmButton() {
+    return GestureDetector(
+      onTap: () async {
+        if (widget.meetingId == null) return;
+
+        if (_selectedTimeSlot == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('시간을 선택해주세요')),
+          );
+          return;
+        }
+
+        // 선택된 시간으로 확정
+        final success = await ref
+            .read(voteProvider(widget.meetingId!).notifier)
+            .confirmTimeManual(_selectedTimeSlot!);
+
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('시간이 확정되었습니다')),
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: ShapeDecoration(
+          color: const Color(0xFF0A1D60), // main080
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+        child: const Text(
+          '확정하기',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontFamily: 'Pretendard',
+            fontWeight: FontWeight.w400,
+            height: 1.43,
+          ),
+        ),
+      ),
+    );
+  }
+
   /// 수정하기 버튼
   Widget _buildEditButton() {
     return GestureDetector(
@@ -2020,11 +2087,11 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
         final selectedTimes = await _showTimePickerBottomSheet();
 
         if (selectedTimes != null && selectedTimes.isNotEmpty && mounted) {
-          final success = await ref
+          final timeSummary = await ref
               .read(voteProvider(widget.meetingId!).notifier)
               .voteTimes(selectedTimes.toList());
 
-          if (success && mounted) {
+          if (timeSummary != null && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('시간 투표가 수정되었습니다')),
             );
@@ -2032,7 +2099,6 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
         }
       },
       child: Container(
-        width: double.infinity,
         padding: const EdgeInsets.all(12),
         decoration: ShapeDecoration(
           color: const Color(0xFF1A49F1), // main050

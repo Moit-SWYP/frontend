@@ -59,35 +59,44 @@ class VoteNotifier extends StateNotifier<VoteState> {
 
   /// 투표 요약 로드
   Future<void> loadVoteSummary() async {
+    print('🔍 [Vote] loadVoteSummary() 진입: isLoading=${state.isLoading}');
+
     if (state.isLoading) {
-      print('⚠️ [Vote] 이미 로딩 중입니다.');
+      print('⚠️ [Vote] 이미 로딩 중입니다. (early return)');
       return;
     }
 
     print('🔄 [Vote] 투표 요약 로드 시작 (meetingId: $meetingId)');
+    print('  - isLoading을 true로 설정');
     state = state.copyWith(isLoading: true, errorMessage: null);
+    print('  - 현재 isLoading: ${state.isLoading}');
 
     try {
+      print('🌐 [Vote] API 호출 시작: getVoteSummary($meetingId)');
       final summary = await _voteClient.getVoteSummary(meetingId);
 
-      print('✅ [Vote] 투표 요약 로드 성공');
+      print('✅ [Vote] 투표 요약 로드 API 성공');
       print('  - meetingStatus: ${summary.meetingStatus}');
       print('  - isHost: ${summary.isHost}');
       print('  - confirmedDate: ${summary.confirmedDate}');
       print('  - confirmedTime: ${summary.confirmedTime}');
 
+      print('  - isLoading을 false로 설정');
       state = state.copyWith(
         summary: summary,
         isLoading: false,
       );
+      print('  - 최종 isLoading: ${state.isLoading}');
     } catch (e, stackTrace) {
       print('❌ [Vote] 투표 요약 로드 실패: $e');
       print('❌ [Vote] StackTrace: $stackTrace');
 
+      print('  - 에러 후 isLoading을 false로 설정');
       state = state.copyWith(
         isLoading: false,
         errorMessage: '투표 정보를 불러오는데 실패했습니다.',
       );
+      print('  - 에러 후 isLoading: ${state.isLoading}');
     }
   }
 
@@ -103,10 +112,17 @@ class VoteNotifier extends StateNotifier<VoteState> {
       final request = DateVoteRequest(dates: dates);
       await _voteClient.voteDates(meetingId, request);
 
-      print('✅ [Vote] 날짜 투표 성공');
+      print('✅ [Vote] 날짜 투표 API 성공');
+
+      // ✨ 중요: loadVoteSummary 호출 전 isLoading 해제
+      print('  - isLoading을 false로 설정 (loadVoteSummary 호출 전)');
+      state = state.copyWith(isLoading: false);
+      print('  - 현재 isLoading: ${state.isLoading}');
 
       // 투표 후 요약 다시 로드
+      print('🔄 [Vote] loadVoteSummary() 호출');
       await loadVoteSummary();
+      print('✅ [Vote] loadVoteSummary() 완료');
 
       return true;
     } catch (e, stackTrace) {
@@ -123,7 +139,7 @@ class VoteNotifier extends StateNotifier<VoteState> {
   }
 
   /// 시간 투표
-  Future<bool> voteTimes(List<String> times) async {
+  Future<TimeSummary?> voteTimes(List<String> times) async {
     print('🔄 [Vote] 시간 투표 시작');
     print('  - meetingId: $meetingId');
     print('  - times: $times');
@@ -134,12 +150,22 @@ class VoteNotifier extends StateNotifier<VoteState> {
       final request = TimeVoteRequest(times: times);
       await _voteClient.voteTimes(meetingId, request);
 
-      print('✅ [Vote] 시간 투표 성공');
+      print('✅ [Vote] 시간 투표 API 성공');
+
+      // ✨ 중요: loadVoteSummary 호출 전 isLoading 해제
+      print('  - isLoading을 false로 설정 (loadVoteSummary 호출 전)');
+      state = state.copyWith(isLoading: false);
+      print('  - 현재 isLoading: ${state.isLoading}');
 
       // 투표 후 요약 다시 로드
+      print('🔄 [Vote] loadVoteSummary() 호출');
       await loadVoteSummary();
+      print('✅ [Vote] loadVoteSummary() 완료');
 
-      return true;
+      // ✅ 변경: timeSummary 반환
+      final timeSummary = state.summary?.timeSummary;
+      print('  - 반환할 timeSummary: ${timeSummary != null ? "${timeSummary.votedTimes.length}개 시간" : "null"}');
+      return timeSummary;
     } catch (e, stackTrace) {
       print('❌ [Vote] 시간 투표 실패: $e');
       print('❌ [Vote] StackTrace: $stackTrace');
@@ -149,12 +175,14 @@ class VoteNotifier extends StateNotifier<VoteState> {
         errorMessage: '시간 투표에 실패했습니다.',
       );
 
-      return false;
+      return null;
     }
   }
 
   /// 날짜 확정 (자동 - 최다 득표)
   Future<bool> confirmDate() async {
+    print('🔍 [Vote] confirmDate() 진입: isLoading=${state.isLoading}, isHost=${state.isHost}');
+
     if (!state.isHost) {
       print('⚠️ [Vote] 호스트만 확정할 수 있습니다.');
       state = state.copyWith(errorMessage: '호스트만 날짜를 확정할 수 있습니다.');
@@ -162,17 +190,24 @@ class VoteNotifier extends StateNotifier<VoteState> {
     }
 
     print('🔄 [Vote] 날짜 확정 시작 (자동)');
+    print('  - isLoading을 true로 설정');
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
+      print('🌐 [Vote] API 호출 시작: confirmDate($meetingId)');
       await _voteClient.confirmDate(meetingId);
-      print('✅ [Vote] 날짜 확정 성공');
+      print('✅ [Vote] 날짜 확정 API 성공');
 
       // ✨ 변경: loadVoteSummary 호출 전 isLoading 해제
+      print('  - isLoading을 false로 설정 (loadVoteSummary 호출 전)');
       state = state.copyWith(isLoading: false);
+      print('  - 현재 isLoading: ${state.isLoading}');
 
       // 확정 후 요약 다시 로드
+      print('🔄 [Vote] loadVoteSummary() 호출');
       await loadVoteSummary();
+      print('✅ [Vote] loadVoteSummary() 완료');
+      print('  - 최종 isLoading: ${state.isLoading}');
 
       return true;
     } catch (e, stackTrace) {
@@ -183,6 +218,7 @@ class VoteNotifier extends StateNotifier<VoteState> {
         isLoading: false,
         errorMessage: '날짜 확정에 실패했습니다.',
       );
+      print('  - 에러 후 isLoading: ${state.isLoading}');
 
       return false;
     }
