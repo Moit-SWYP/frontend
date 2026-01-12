@@ -677,12 +677,19 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                                 return;
                               }
 
-                              // 투표 데이터가 있는지 확인
-                              if (voteState.summary?.dateSummary == null ||
-                                  voteState.summary!.dateSummary!.topDates.isEmpty) {
+                              // 선택된 날짜 또는 투표 데이터 확인
+                              String? dateToConfirm;
+
+                              if (_selectedDay != null) {
+                                // 캘린더에서 선택한 날짜가 있으면 우선 사용
+                                dateToConfirm = '${_selectedDay!.year}-${_selectedDay!.month.toString().padLeft(2, '0')}-${_selectedDay!.day.toString().padLeft(2, '0')}';
+                              } else if (voteState.summary?.dateSummary?.topDates.isNotEmpty == true) {
+                                // 선택한 날짜가 없으면 최다 득표 날짜 사용
+                                dateToConfirm = voteState.summary!.dateSummary!.topDates.first;
+                              } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('투표 데이터가 없습니다. 먼저 날짜 투표를 진행해주세요.'),
+                                    content: Text('날짜를 선택하거나 투표를 먼저 진행해주세요.'),
                                     backgroundColor: Colors.red,
                                   ),
                                 );
@@ -694,7 +701,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                                 context: context,
                                 builder: (context) => AlertDialog(
                                   title: const Text('날짜 확정'),
-                                  content: const Text('최다 득표 날짜로 확정하시겠습니까?'),
+                                  content: Text('$dateToConfirm 날짜로 확정하시겠습니까?'),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.pop(context, false),
@@ -709,25 +716,18 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                               );
 
                               if (confirmed == true && mounted) {
-                                // 확정 API 호출
+                                // 날짜 수동 확정 API 호출
                                 final success = await ref
-                                    .read(meetingProvider.notifier)
-                                    .confirmMeeting(widget.meeting.meetingId);
+                                    .read(voteProvider(widget.meeting.meetingId).notifier)
+                                    .confirmDateManual(dateToConfirm);
 
                                 if (success && mounted) {
-                                  // 투표 요약 다시 로드
-                                  await ref
-                                      .read(voteProvider(widget.meeting.meetingId).notifier)
-                                      .loadVoteSummary();
-
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('날짜가 확정되었습니다.'),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                  }
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('날짜가 확정되었습니다.'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
                                 }
                               }
                             },
@@ -970,7 +970,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
         ),
 
       // 모임장: 시간 투표 후 유력한 시간 표시 및 버튼
-      if (isHost && hasVotedTime && topTime != null)
+      if (isHost && timeSummary?.votedTimes.isNotEmpty == true && topTime != null)
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
@@ -1119,11 +1119,19 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                           return;
                         }
 
-                        // 투표 데이터가 있는지 확인
-                        if (timeSummary?.topTimes.isEmpty ?? true) {
+                        // 선택된 시간 또는 투표 데이터 확인
+                        String? timeToConfirm;
+
+                        if (_selectedTime != null) {
+                          // 드롭다운에서 선택한 시간이 있으면 우선 사용
+                          timeToConfirm = _selectedTime;
+                        } else if (timeSummary?.topTimes.isNotEmpty == true) {
+                          // 선택한 시간이 없으면 최다 득표 시간 사용
+                          timeToConfirm = timeSummary!.topTimes.first;
+                        } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('시간 투표 데이터가 없습니다.'),
+                              content: Text('시간을 선택하거나 투표를 먼저 진행해주세요.'),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -1135,7 +1143,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                           context: context,
                           builder: (context) => AlertDialog(
                             title: const Text('시간 확정'),
-                            content: const Text('최다 득표 시간으로 확정하시겠습니까?'),
+                            content: Text('$timeToConfirm 시간으로 확정하시겠습니까?'),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context, false),
@@ -1150,9 +1158,10 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                         );
 
                         if (confirmed == true && mounted) {
+                          // 시간 수동 확정 API 호출
                           final success = await ref
                               .read(voteProvider(widget.meeting.meetingId).notifier)
-                              .confirmTime();
+                              .confirmTimeManual(timeToConfirm!);
 
                           if (success && mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(

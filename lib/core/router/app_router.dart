@@ -4,6 +4,7 @@ import 'package:moit/features/auth/presentation/screens/login_screen.dart';
 import 'package:moit/features/auth/presentation/screens/signup_detail_screen.dart';
 import 'package:moit/features/auth/providers/auth_provider.dart';
 import 'package:moit/features/home/presentation/screens/main_tab_screen.dart';
+import 'package:moit/features/home/presentation/screens/vote_home_screen.dart';
 import 'package:moit/features/settings/presentation/screens/home_profile.dart';
 import 'package:moit/features/settings/presentation/screens/home_profile_my.dart';
 import 'package:moit/features/settings/presentation/screens/home_profile_my_account.dart';
@@ -95,6 +96,13 @@ class AppRouter {
         path: '/settings/notifications',
         name: 'notifications',
         builder: (context, state) => const NotificationSettingsScreen(),
+      ),
+
+      // Vote Home 화면 (대기 중인 모임 전체 목록)
+      GoRoute(
+        path: '/vote-home',
+        name: 'vote-home',
+        builder: (context, state) => const VoteHomeScreen(),
       ),
 
       // TODO: 다른 화면들 추가
