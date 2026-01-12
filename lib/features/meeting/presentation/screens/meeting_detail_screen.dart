@@ -970,7 +970,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
         ),
 
       // 모임장: 시간 투표 후 유력한 시간 표시 및 버튼
-      if (isHost && timeSummary?.votedTimes.isNotEmpty == true && topTime != null)
+      if (isHost && hasVotedTime && topTime != null)
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),

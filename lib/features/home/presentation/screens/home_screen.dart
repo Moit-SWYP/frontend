@@ -469,13 +469,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // D-day 카드들 (날짜가 확정된 모임들 - 가로 스크롤)
     if (homeState.hasHomeMeetings) {
-      // 날짜가 확정된 모임들 필터링 (dateVoted 또는 fixed)
-      final confirmedMeetings = homeState.homeData!.homeMeetings
+      // 날짜가 확정된 모임들 필터링 (dateVoted, timeVoting, timeVoted, fixed)
+      var confirmedMeetings = homeState.homeData!.homeMeetings
           .where((meeting) =>
               meeting.date != null &&
               (meeting.status == MeetingStatus.dateVoted ||
+                  meeting.status == MeetingStatus.timeVoting ||
+                  meeting.status == MeetingStatus.timeVoted ||
                   meeting.status == MeetingStatus.fixed))
           .toList();
+
+      // 날짜순 정렬 (가까운 순)
+      confirmedMeetings.sort((a, b) {
+        final dateA = DateTime.parse(a.date!);
+        final dateB = DateTime.parse(b.date!);
+        return dateA.compareTo(dateB);
+      });
+
+      // 최대 5개까지만 표시
+      confirmedMeetings = confirmedMeetings.take(5).toList();
 
       if (confirmedMeetings.isNotEmpty) {
         widgets.add(_buildDDayCarousel(confirmedMeetings));
