@@ -14,7 +14,7 @@ void main() async {
   await initializeDateFormatting('ko', null);
 
   // 카카오 SDK 초기화
-  KakaoLoginService.initialize();
+  await KakaoLoginService.initialize();
 
   runApp(
     const ProviderScope(

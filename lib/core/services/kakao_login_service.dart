@@ -5,10 +5,19 @@ class KakaoLoginService {
   /// 카카오 SDK 초기화
   ///
   /// main.dart에서 앱 시작 시 호출해야 함
-  static void initialize() {
+  static Future<void> initialize() async {
     KakaoSdk.init(
       nativeAppKey: '5f85d667c593c86d5bc8372844f15800',
     );
+
+    // 🔑 카카오가 실제로 사용하는 키 해시 출력 (디버깅용)
+    try {
+      var keyHash = await KakaoSdk.origin;
+      print('🔑 [카카오 키 해시] 카카오가 원하는 진짜 키: $keyHash');
+      print('🔑 [카카오 키 해시] 이 값을 카카오 개발자 콘솔에 등록하세요!');
+    } catch (e) {
+      print('⚠️ [카카오 키 해시] 키 해시를 가져올 수 없습니다: $e');
+    }
   }
 
   /// 카카오 로그인

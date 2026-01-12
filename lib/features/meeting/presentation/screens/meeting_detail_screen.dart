@@ -1093,9 +1093,11 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                     ),
                   );
                 }).toList(),
+                const SizedBox(height: 16),
               ],
 
-              const SizedBox(height: 16),
+              // 드롭다운 접었을 때는 간격 추가
+              if (!_isTimeDropdownExpanded) const SizedBox(height: 16),
 
               // 확정하기 / 수정하기 버튼 (항상 표시)
               Row(
