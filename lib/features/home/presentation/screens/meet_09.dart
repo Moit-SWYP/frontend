@@ -1123,15 +1123,17 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
         ? ref.watch(voteProvider(widget.meetingId!))
         : null;
 
-    // 시간 투표 완료 여부 확인 (VoteState의 hasVotedTime getter 사용)
+    // 시간 확정 및 투표 상태 확인
+    final confirmedTime = voteState?.summary?.confirmedTime;
     final hasVotedTime = voteState?.hasVotedTime ?? false;
+    final isTimeConfirmed = confirmedTime != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 헤더 (투표 완료 시 드롭다운 추가)
         GestureDetector(
-          onTap: hasVotedTime
+          onTap: (hasVotedTime || isTimeConfirmed)
               ? () {
                   setState(() {
                     _isTimeExpanded = !_isTimeExpanded;
@@ -1157,17 +1159,27 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: ShapeDecoration(
-                      color: hasVotedTime
-                          ? const Color(0xFF102C91) // main070 (투표 완료)
-                          : const Color(0xFFC5C8CE), // grey050 (투표 전)
+                      color: isTimeConfirmed
+                          ? const Color(0xFF0A1D60) // main080 (투표 완료)
+                          : hasVotedTime
+                              ? const Color(0xFFE8EDFE) // main010 (투표 중)
+                              : const Color(0xFFC5C8CE), // grey050 (투표 전)
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: Text(
-                      hasVotedTime ? '투표 중' : '투표 전',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      isTimeConfirmed
+                          ? '투표 완료'
+                          : hasVotedTime
+                              ? '투표 중'
+                              : '투표 전',
+                      style: TextStyle(
+                        color: isTimeConfirmed
+                            ? Colors.white
+                            : hasVotedTime
+                                ? const Color(0xFF1A49F1)
+                                : Colors.white,
                         fontSize: 13,
                         fontFamily: 'Pretendard',
                         fontWeight: FontWeight.w500,
@@ -1178,7 +1190,7 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
                   ),
                 ],
               ),
-              if (hasVotedTime)
+              if (hasVotedTime || isTimeConfirmed)
                 Icon(
                   _isTimeExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
                   color: const Color(0xFF111111),
@@ -1189,9 +1201,14 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
 
         const SizedBox(height: 16),
 
-        // 투표 전 상태: 투표하기 버튼
+        // 케이스 1: 시간 확정 완료
+        if (isTimeConfirmed)
+          _buildConfirmedTimeCard(confirmedTime),
+
+        // 케이스 2: 투표 전 상태 - 투표하기 버튼
         // 조건: 시간 투표 가능한 상태이고, 아직 투표하지 않았고, 모임이 확정되지 않은 상태
-        if (!hasVotedTime &&
+        if (!isTimeConfirmed &&
+            !hasVotedTime &&
             (voteState?.isTimeVoting ?? false) &&
             !(voteState?.isFixed ?? false))
           Container(
@@ -1293,8 +1310,11 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
             ),
           ),
 
-        // 투표 완료 상태: 드롭다운으로 투표 결과 표시
-        if (hasVotedTime && _isTimeExpanded && voteState?.summary?.timeSummary != null)
+        // 케이스 3: 투표 완료 상태 - 투표 결과 표시 (확정 전)
+        if (!isTimeConfirmed &&
+            hasVotedTime &&
+            _isTimeExpanded &&
+            voteState?.summary?.timeSummary != null)
           _buildTimeVoteResult(voteState!.summary!.timeSummary!),
       ],
     );
@@ -1780,7 +1800,7 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
   }
 
   /// 시간 투표 결과 표시
-  Widget _buildTimeVoteResult(timeSummary) {
+  Widget _buildTimeVoteResult(timeSummary, {bool showButtons = true}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -1808,22 +1828,23 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
           // 3. 선택된 시간의 투표자 정보
           if (_selectedTimeSlot != null) _buildAvailablePeopleForTime(_selectedTimeSlot!),
 
-          if (_selectedTimeSlot != null) const SizedBox(height: 26),
-
-          // 4. 확정하기 + 수정하기 버튼
-          Row(
-            children: [
-              // 확정하기 버튼
-              Expanded(
-                child: _buildConfirmButton(),
-              ),
-              const SizedBox(width: 12),
-              // 수정하기 버튼
-              Expanded(
-                child: _buildEditButton(),
-              ),
-            ],
-          ),
+          // 4. 확정하기 + 수정하기 버튼 (showButtons가 true일 때만 표시)
+          if (showButtons) ...[
+            if (_selectedTimeSlot != null) const SizedBox(height: 26),
+            Row(
+              children: [
+                // 확정하기 버튼
+                Expanded(
+                  child: _buildConfirmButton(),
+                ),
+                const SizedBox(width: 12),
+                // 수정하기 버튼
+                Expanded(
+                  child: _buildEditButton(),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -2145,6 +2166,131 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
             height: 1.43,
           ),
         ),
+      ),
+    );
+  }
+
+  /// 확정된 시간 카드
+  Widget _buildConfirmedTimeCard(String confirmedTime) {
+    final displayTime = _formatTimeToDisplay(confirmedTime); // "오후 01:00"
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFF7F8F9), // grey030
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. 확정된 시간 표시 + 드롭다운
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isTimeExpanded = !_isTimeExpanded;
+              });
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      displayTime,
+                      style: const TextStyle(
+                        color: Color(0xFF020101),
+                        fontSize: 18,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w700,
+                        height: 1.33,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text(
+                      '만나요!',
+                      style: TextStyle(
+                        color: Color(0xFF505050), // txt-secondary
+                        fontSize: 13,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w400,
+                        height: 1.38,
+                      ),
+                    ),
+                  ],
+                ),
+                Icon(
+                  _isTimeExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  size: 24,
+                  color: const Color(0xFF111111),
+                ),
+              ],
+            ),
+          ),
+
+          // 2. 드롭다운 확장 시: 투표 결과 (읽기 전용, 버튼 없음)
+          if (_isTimeExpanded) ...[
+            const SizedBox(height: 16),
+            Builder(
+              builder: (context) {
+                final voteState = ref.watch(voteProvider(widget.meetingId!));
+                final timeSummary = voteState.summary?.timeSummary;
+                if (timeSummary == null) return const SizedBox.shrink();
+
+                return _buildTimeVoteResult(timeSummary, showButtons: false);
+              },
+            ),
+          ],
+
+          const SizedBox(height: 16),
+
+          // 3. "다시 정하기" 버튼
+          GestureDetector(
+            onTap: () async {
+              if (widget.meetingId == null) return;
+
+              final success = await ref
+                  .read(voteProvider(widget.meetingId!).notifier)
+                  .cancelTimeConfirm();
+
+              if (success && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('시간 확정이 취소되었습니다')),
+                );
+
+                // 투표 결과로 자동 전환 (상태 업데이트)
+                setState(() {
+                  _isTimeExpanded = true;
+                });
+              }
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: ShapeDecoration(
+                color: const Color(0xFF0A1D60), // main080
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              child: const Text(
+                '다시 정하기',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontFamily: 'Pretendard',
+                  fontWeight: FontWeight.w400,
+                  height: 1.43,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
