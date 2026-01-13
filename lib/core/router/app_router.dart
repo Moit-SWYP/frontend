@@ -105,6 +105,18 @@ class AppRouter {
         builder: (context, state) => const VoteHomeScreen(),
       ),
 
+      // 초대 링크 처리 경로
+      // DeepLinkService가 실제 모임 참여를 처리하고 모임 상세 화면으로 이동
+      // GoRouter는 "no routes for location" 에러 방지를 위해 홈으로 리다이렉트
+      GoRoute(
+        path: '/invite',
+        name: 'invite',
+        redirect: (context, state) {
+          // DeepLinkService가 백그라운드에서 처리
+          return '/';
+        },
+      ),
+
       // TODO: 다른 화면들 추가
       // 홈 화면, 모임 목록, 스터디 상세 등
     ],

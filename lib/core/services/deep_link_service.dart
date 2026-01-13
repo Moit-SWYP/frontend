@@ -3,10 +3,19 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moit/features/meeting/providers/meeting_provider.dart';
+import 'package:moit/features/meeting/presentation/screens/meeting_detail_screen.dart';
 
 /// 딥링크 서비스
 ///
-/// moit://invite/{token} 또는 https://moit.shop/invite/{token} 형태의 링크 처리
+/// 지원하는 초대 링크 형식:
+/// - QueryParameter: https://moit.shop/invite?token={token} (권장)
+/// - QueryParameter: moit://invite?token={token}
+/// - Path Segment: https://moit.shop/invite/{token} (레거시 호환)
+/// - Path Segment: moit://invite/{token} (레거시 호환)
+///
+/// 토큰 추출 우선순위:
+/// 1. queryParameters['token'] (우선)
+/// 2. pathSegments (레거시 호환)
 class DeepLinkService {
   static final DeepLinkService _instance = DeepLinkService._internal();
   factory DeepLinkService() => _instance;
@@ -45,34 +54,47 @@ class DeepLinkService {
 
   /// 딥링크 처리
   ///
-  /// moit://invite/{token} 또는 https://moit.shop/invite/{token}
+  /// 지원 형식:
+  /// - QueryParameter: moit://invite?token={token}, https://moit.shop/invite?token={token}
+  /// - Path Segment: moit://invite/{token}, https://moit.shop/invite/{token}
   Future<void> _handleDeepLink(Uri uri, BuildContext context, WidgetRef ref) async {
     print('🔍 [DeepLink] URI 분석 시작');
     print('  - scheme: ${uri.scheme}');
     print('  - host: ${uri.host}');
     print('  - path: ${uri.path}');
     print('  - pathSegments: ${uri.pathSegments}');
+    print('  - queryParameters: ${uri.queryParameters}');
 
     // 1. 초대 링크인지 확인
     bool isInviteLink = false;
     String? inviteToken;
 
-    // moit://invite/{token} 형태
+    // moit://invite 형태 (QueryParameter 또는 Path Segment)
     if (uri.scheme == 'moit' && uri.host == 'invite') {
       isInviteLink = true;
-      // pathSegments가 있으면 첫번째가 token
-      if (uri.pathSegments.isNotEmpty) {
+
+      // 1순위: QueryParameter (moit://invite?token=xxx)
+      if (uri.queryParameters.containsKey('token')) {
+        inviteToken = uri.queryParameters['token'];
+      }
+      // 2순위: Path Segment (moit://invite/xxx) - 레거시 호환
+      else if (uri.pathSegments.isNotEmpty) {
         inviteToken = uri.pathSegments.first;
       }
     }
-    // https://moit.shop/invite/{token} 형태
+    // https://moit.shop/invite 형태 (QueryParameter 또는 Path Segment)
     else if (uri.scheme == 'https' &&
              uri.host == 'moit.shop' &&
              uri.pathSegments.isNotEmpty &&
              uri.pathSegments.first == 'invite') {
       isInviteLink = true;
-      // pathSegments[1]이 token
-      if (uri.pathSegments.length > 1) {
+
+      // 1순위: QueryParameter (https://moit.shop/invite?token=xxx) - 현재 백엔드 방식
+      if (uri.queryParameters.containsKey('token')) {
+        inviteToken = uri.queryParameters['token'];
+      }
+      // 2순위: Path Segment (https://moit.shop/invite/xxx) - 레거시 호환
+      else if (uri.pathSegments.length > 1) {
         inviteToken = uri.pathSegments[1];
       }
     }
@@ -84,7 +106,10 @@ class DeepLinkService {
 
     if (inviteToken == null || inviteToken.isEmpty) {
       print('❌ [DeepLink] 토큰이 없습니다');
-      _showError(context, '유효하지 않은 초대 링크입니다');
+      print('  - URI: $uri');
+      print('  - queryParameters: ${uri.queryParameters}');
+      print('  - pathSegments: ${uri.pathSegments}');
+      _showError(context, '유효하지 않은 초대 링크입니다.\n토큰이 누락되었습니다.');
       return;
     }
 
@@ -103,34 +128,56 @@ class DeepLinkService {
     try {
       // 3. 모임 참여 API 호출
       print('🔄 [DeepLink] 모임 참여 시작');
-      final success = await ref
+      final meetingId = await ref
           .read(meetingProvider.notifier)
           .joinMeetingFromLink(inviteToken);
 
-      if (!success) {
-        throw Exception('모임 참여 실패');
-      }
-
-      print('✅ [DeepLink] 모임 참여 성공');
-
-      // 4. 참여한 모임 정보 가져오기
-      // (백엔드에서 참여 후 meetingId를 반환하면 좋지만, 없다면 홈 데이터를 새로고침)
-      // 일단 홈 화면으로 이동 후 사용자가 직접 카드를 누르게 함
+      print('✅ [DeepLink] 모임 참여 성공 - meetingId: $meetingId');
 
       // 로딩 닫기
       if (!context.mounted) return;
       Navigator.pop(context);
 
-      // 성공 메시지
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('모임에 참여했습니다!'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      // 4. 모임 상세 화면으로 이동
+      if (meetingId != null) {
+        // 백엔드가 meetingId를 반환하는 경우: 해당 모임 상세 화면으로 이동
+        print('🔄 [DeepLink] 모임 상세 화면으로 이동: meetingId=$meetingId');
 
-      // TODO: 백엔드에서 참여한 meetingId를 반환하면, 해당 모임의 투표 화면으로 직접 이동
-      // 현재는 홈 화면으로 이동
+        // 모임 목록에서 해당 모임 찾기
+        final meetings = ref.read(meetingProvider).meetings;
+        final meeting = meetings.firstWhere(
+          (m) => m.meetingId == meetingId,
+          orElse: () => throw Exception('모임을 찾을 수 없습니다'),
+        );
+
+        if (!context.mounted) return;
+
+        // 모임 상세 화면으로 네비게이션
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => MeetingDetailScreen(meeting: meeting),
+          ),
+        );
+
+        // 성공 메시지
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('모임에 참여했습니다!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        // 백엔드가 meetingId를 반환하지 않는 경우: 홈 화면으로 이동
+        print('⚠️ [DeepLink] meetingId 없음 - 홈 화면으로 이동');
+
+        // 성공 메시지
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('모임에 참여했습니다!\n홈 화면에서 확인해주세요.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
 
     } catch (e) {
       print('❌ [DeepLink] 모임 참여 실패: $e');
@@ -146,6 +193,12 @@ class DeepLinkService {
         errorMessage = '이미 참여한 모임입니다';
       } else if (e.toString().contains('404')) {
         errorMessage = '존재하지 않는 모임입니다';
+      } else if (e.toString().contains('401') || e.toString().contains('AUTH001')) {
+        // 권한 에러 (로그인 필요 또는 토큰 문제)
+        errorMessage = '로그인이 필요합니다.\n다시 로그인 후 시도해주세요.';
+      } else if (e.toString().contains('400')) {
+        // 잘못된 요청 (토큰 형식 오류)
+        errorMessage = '유효하지 않은 초대 링크입니다';
       }
 
       _showError(context, errorMessage);

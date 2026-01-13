@@ -395,7 +395,9 @@ class MeetingClient {
   /// String 형태의 토큰을 UUID로 변환하고 해당 meeting에 참여
   /// 이미 참여중이거나 유효하지 않은 meeting이면 에러 반환
   /// Authorization 헤더에 Access Token 필요
-  Future<void> joinMeetingFromLink(String inviteToken) async {
+  ///
+  /// 반환값: meetingId (백엔드가 응답에 포함하는 경우, 없으면 null)
+  Future<int?> joinMeetingFromLink(String inviteToken) async {
     try {
       print('🌐 [MeetingClient] POST /api/meetings/invitations/join?inviteToken=$inviteToken');
 
@@ -405,7 +407,27 @@ class MeetingClient {
       );
 
       print('🌐 [MeetingClient] Response Status: ${response.statusCode}');
-      print('✅ [MeetingClient] 모임 참여 성공');
+      print('🌐 [MeetingClient] Response Data: ${response.data}');
+
+      // 백엔드가 meetingId를 반환하는 경우 추출
+      int? meetingId;
+      if (response.data != null && response.data is Map) {
+        final data = response.data['data'];
+        if (data != null && data is Map) {
+          meetingId = data['meetingId'] as int?;
+          if (meetingId != null) {
+            print('✅ [MeetingClient] 모임 참여 성공 - meetingId: $meetingId');
+          } else {
+            print('✅ [MeetingClient] 모임 참여 성공 (meetingId 없음)');
+          }
+        } else {
+          print('✅ [MeetingClient] 모임 참여 성공 (data 없음)');
+        }
+      } else {
+        print('✅ [MeetingClient] 모임 참여 성공');
+      }
+
+      return meetingId;
     } catch (e, stackTrace) {
       print('❌ [MeetingClient] joinMeetingFromLink 에러: $e');
       print('❌ [MeetingClient] StackTrace: $stackTrace');

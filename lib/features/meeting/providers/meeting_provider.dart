@@ -244,18 +244,20 @@ class MeetingNotifier extends StateNotifier<MeetingState> {
   }
 
   /// 초대 링크로 모임 참여
-  Future<bool> joinMeetingFromLink(String inviteToken) async {
+  ///
+  /// 반환값: meetingId (백엔드가 응답에 포함하는 경우, 없으면 null)
+  Future<int?> joinMeetingFromLink(String inviteToken) async {
     print('🔄 [Meeting] 초대 링크로 모임 참여: $inviteToken');
 
     try {
-      await _meetingClient.joinMeetingFromLink(inviteToken);
+      final meetingId = await _meetingClient.joinMeetingFromLink(inviteToken);
 
-      print('✅ [Meeting] 모임 참여 성공');
+      print('✅ [Meeting] 모임 참여 성공 - meetingId: $meetingId');
 
       // 참여 후 리스트 새로고침
       await loadMeetings();
 
-      return true;
+      return meetingId;
     } catch (e, stackTrace) {
       print('❌ [Meeting] 모임 참여 실패: $e');
       print('❌ [Meeting] StackTrace: $stackTrace');
@@ -272,7 +274,7 @@ class MeetingNotifier extends StateNotifier<MeetingState> {
 
       state = state.copyWith(errorMessage: errorMessage);
 
-      return false;
+      rethrow; // 에러를 DeepLinkService로 전파
     }
   }
 
