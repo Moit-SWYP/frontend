@@ -342,22 +342,12 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
       height: 56,
       child: ElevatedButton(
         onPressed: () async {
-          try {
-            // 카카오 SDK 로그아웃
-            await KakaoLoginService.logout();
+          // AuthProvider의 logout 메서드 호출
+          await ref.read(authProvider.notifier).logout();
 
-            // MemberProvider 초기화
-            ref.read(memberProvider.notifier).clearMemberInfo();
-
-            debugPrint('로그아웃 성공');
-
-            // 로그인 화면으로 완전 이동 (뒤로가기 방지)
-            if (context.mounted) {
-              context.go('/login');
-            }
-          } catch (e) {
-            debugPrint('로그아웃 실패: $e');
-            // TODO: 사용자에게 에러 메시지 표시
+          // 로그아웃 후 로그인 화면으로 이동
+          if (context.mounted) {
+            context.go('/login');
           }
         },
         style: ElevatedButton.styleFrom(
