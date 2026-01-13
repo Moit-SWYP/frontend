@@ -6,6 +6,7 @@ import 'package:moit/features/home/presentation/screens/meet_03.dart';
 import 'package:moit/features/home/presentation/screens/meet_07.dart';
 import 'package:moit/features/meeting/providers/meeting_provider.dart';
 import 'package:moit/features/meeting/providers/vote_provider.dart';
+import 'package:moit/features/member/data/models/character_type.dart';
 
 /// 모임 만들기 9단계 - 날짜 투표 확인 화면
 class Meet09Screen extends ConsumerStatefulWidget {
@@ -2042,8 +2043,8 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
 
   /// 캐릭터 타입을 아이콘 경로로 변환
   String _getCharacterIconPath(String characterType) {
-    final type = characterType.toLowerCase();
-    return 'assets/icons/character/${type}_S.svg';
+    final type = CharacterTypeExtension.fromJson(characterType);
+    return type.getIconPath('S');
   }
 
   /// 확정하기 버튼
@@ -2073,8 +2074,12 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: ShapeDecoration(
-          color: const Color(0xFF0A1D60), // main080
+          color: Colors.white,
           shape: RoundedRectangleBorder(
+            side: const BorderSide(
+              width: 1.50,
+              color: Color(0xFF1A49F1),
+            ),
             borderRadius: BorderRadius.circular(999),
           ),
         ),
@@ -2082,7 +2087,7 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
           '확정하기',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.white,
+            color: Color(0xFF1A49F1),
             fontSize: 14,
             fontFamily: 'Pretendard',
             fontWeight: FontWeight.w400,

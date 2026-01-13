@@ -881,6 +881,8 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
         : null;
     final hasVotedTime = voteState.hasVotedTime;
     final isHost = voteState.isHost;
+    final confirmedTime = voteState.summary?.confirmedTime; // 확정된 시간
+    final isTimeConfirmed = confirmedTime != null; // 시간 확정 여부
 
     return [
       const SizedBox(height: 24),
@@ -893,20 +895,21 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
             '만나는 시간',
             style: TextStyle(
               color: Color(0xFF111111),
-              fontSize: 18,
+              fontSize: 16,
               fontFamily: 'Pretendard',
               fontWeight: FontWeight.w700,
+              height: 1.50,
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A49F1),
+              color: isTimeConfirmed ? const Color(0xFF0A1D60) : const Color(0xFF1A49F1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text(
-              '투표 중',
-              style: TextStyle(
+            child: Text(
+              isTimeConfirmed ? '투표 완료' : '투표 중',
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 13,
                 fontFamily: 'Pretendard',
@@ -918,7 +921,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
           ),
         ],
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 8),
 
       // 모임원: 투표 전 안내 메시지 또는 투표하기 버튼
       if (!isHost && !hasVotedTime)
@@ -969,8 +972,8 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
           ],
         ),
 
-      // 모임장: 시간 투표 후 유력한 시간 표시 및 버튼
-      if (isHost && hasVotedTime && topTime != null)
+      // 모임장: 시간 투표 후 유력한 시간 표시 및 버튼 (확정 전에만)
+      if (isHost && hasVotedTime && topTime != null && !isTimeConfirmed)
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
@@ -1109,8 +1112,17 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                       onTap: () async {
                         print('📝 [MeetingDetail] 시간 확정하기 클릭');
 
-                        // ✅ 투표 가능 상태 재확인
+                        // ✅ 현재 상태 디버그 출력
                         final currentVoteState = ref.read(voteProvider(widget.meeting.meetingId));
+                        print('🔍 [MeetingDetail] 현재 상태 확인:');
+                        print('   - isHost: ${currentVoteState.isHost}');
+                        print('   - confirmedTime: ${currentVoteState.summary?.confirmedTime}');
+                        print('   - isFixed: ${currentVoteState.isFixed}');
+                        print('   - hasVotedTime: ${currentVoteState.hasVotedTime}');
+                        print('   - topTime: ${timeSummary?.topTimes.firstOrNull}');
+                        print('   - selectedTime: $_selectedTime');
+
+                        // ✅ 투표 가능 상태 재확인
                         if (currentVoteState.isFixed) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -1165,13 +1177,25 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                               .read(voteProvider(widget.meeting.meetingId).notifier)
                               .confirmTimeManual(timeToConfirm!);
 
-                          if (success && mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('시간이 확정되었습니다.'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
+                          if (mounted) {
+                            if (success) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('시간이 확정되었습니다.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } else {
+                              // 실패 시 에러 메시지 표시
+                              final voteState = ref.read(voteProvider(widget.meeting.meetingId));
+                              final errorMsg = voteState.errorMessage ?? '시간 확정에 실패했습니다.';
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(errorMsg),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           }
                         }
                       },
@@ -1244,8 +1268,83 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
           ),
         ),
 
+      // 시간 확정 후 UI (모임장 + 모임원 공통)
+      if (isTimeConfirmed)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7F8F9),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 확정된 시간 표시
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    confirmedTime!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF020101),
+                      fontSize: 18,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w700,
+                      height: 1.33,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Text(
+                    '만나요!',
+                    style: TextStyle(
+                      color: Color(0xFF505050),
+                      fontSize: 13,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w400,
+                      height: 1.38,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // 다시 정하기 버튼 (모임장만)
+              if (isHost)
+                GestureDetector(
+                  onTap: () {
+                    print('📝 [MeetingDetail] 다시 정하기 클릭');
+                    // TODO: 시간 재설정 로직
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0A1D60),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Text(
+                      '다시 정하기',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w400,
+                        height: 1.43,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+
       // 모임원: 시간대 칩 리스트 (투표 후 - 상위 3개, meet22 스타일)
-      if (!isHost && hasVotedTime && timeSummary?.votedTimes.isNotEmpty == true)
+      if (!isHost && hasVotedTime && !isTimeConfirmed && timeSummary?.votedTimes.isNotEmpty == true)
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

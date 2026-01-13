@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moit/features/meeting/data/clients/vote_client.dart';
 import 'package:moit/features/meeting/data/models/vote_summary_response.dart';
+import 'package:moit/features/meeting/data/models/meeting_brief.dart';
 
 /// 투표 상태
 class VoteState {
@@ -296,6 +297,19 @@ class VoteNotifier extends StateNotifier<VoteState> {
       return false;
     }
 
+    // 모임 상태 확인
+    final meetingStatus = state.summary?.meetingStatus;
+    print('🔍 [Vote] 현재 모임 상태: $meetingStatus');
+
+    if (meetingStatus != MeetingStatus.timeVoting &&
+        meetingStatus != MeetingStatus.dateVoted &&
+        meetingStatus != MeetingStatus.timeVoted) {
+      print('⚠️ [Vote] 시간 확정 불가능한 상태: $meetingStatus');
+      final errorMsg = '현재 모임 상태($meetingStatus)에서는 시간 확정을 할 수 없습니다.';
+      state = state.copyWith(errorMessage: errorMsg);
+      return false;
+    }
+
     print('🔄 [Vote] 시간 수동 확정 시작: $time');
     state = state.copyWith(isLoading: true, errorMessage: null);
 
@@ -311,9 +325,15 @@ class VoteNotifier extends StateNotifier<VoteState> {
       print('❌ [Vote] 시간 수동 확정 실패: $e');
       print('❌ [Vote] StackTrace: $stackTrace');
 
+      // 에러 메시지에서 MEET0008 코드 확인
+      String errorMessage = '시간 확정에 실패했습니다.';
+      if (e.toString().contains('MEET0008')) {
+        errorMessage = '현재 모임 상태에서는 시간 확정을 할 수 없습니다.\n모임 상태를 확인해주세요.';
+      }
+
       state = state.copyWith(
         isLoading: false,
-        errorMessage: '시간 확정에 실패했습니다.',
+        errorMessage: errorMessage,
       );
 
       return false;

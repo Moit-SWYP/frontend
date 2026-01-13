@@ -6,6 +6,7 @@ import 'package:moit/features/home/presentation/screens/meet_07.dart';
 import 'package:moit/features/meeting/providers/meeting_provider.dart';
 import 'package:moit/features/meeting/providers/vote_provider.dart';
 import 'package:moit/features/meeting/data/models/vote_summary_response.dart';
+import 'package:moit/features/member/data/models/character_type.dart';
 
 /// 모임원용 투표 결과 확인 화면
 class Meet17Screen extends ConsumerStatefulWidget {
@@ -1621,8 +1622,8 @@ class _Meet17ScreenState extends ConsumerState<Meet17Screen> {
 
   /// 캐릭터 타입을 아이콘 경로로 변환
   String _getCharacterIconPath(String characterType) {
-    final type = characterType.toLowerCase();
-    return 'assets/icons/character/${type}_S.svg';
+    final type = CharacterTypeExtension.fromJson(characterType);
+    return type.getIconPath('S');
   }
 
   /// 수정하기 버튼

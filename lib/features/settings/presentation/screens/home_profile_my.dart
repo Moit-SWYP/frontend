@@ -4,7 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moit/core/constants/app_colors.dart';
 import 'package:moit/core/constants/app_text_styles.dart';
-import 'package:moit/core/services/kakao_login_service.dart';
+import 'package:moit/features/auth/providers/auth_provider.dart';
 import 'package:moit/features/member/data/models/character_type.dart';
 import 'package:moit/features/member/providers/member_provider.dart';
 
