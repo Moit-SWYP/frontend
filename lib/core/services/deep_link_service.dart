@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moit/features/meeting/providers/meeting_provider.dart';
 import 'package:moit/features/meeting/presentation/screens/meeting_detail_screen.dart';
+import 'package:moit/features/meeting/data/models/meeting_brief.dart';
 
 /// 딥링크 서비스
 ///
@@ -23,6 +24,13 @@ class DeepLinkService {
 
   final _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSubscription;
+  GlobalKey<NavigatorState>? _navigatorKey;
+
+  /// NavigatorKey 설정 (main.dart에서 호출)
+  void setNavigatorKey(GlobalKey<NavigatorState> key) {
+    _navigatorKey = key;
+    print('✅ [DeepLink] NavigatorKey 설정 완료');
+  }
 
   /// 딥링크 리스너 초기화
   ///
@@ -115,10 +123,17 @@ class DeepLinkService {
 
     print('✅ [DeepLink] 초대 토큰: $inviteToken');
 
-    // 2. 로딩 표시
-    if (!context.mounted) return;
+    // 2. NavigatorKey에서 context 가져오기
+    final navigatorContext = _navigatorKey?.currentContext;
+    if (navigatorContext == null || !navigatorContext.mounted) {
+      print('❌ [DeepLink] Navigator context를 사용할 수 없습니다');
+      _showError(context, '앱을 다시 시작해주세요.');
+      return;
+    }
+
+    // 3. 로딩 표시
     showDialog(
-      context: context,
+      context: navigatorContext,
       barrierDismissible: false,
       builder: (context) => const Center(
         child: CircularProgressIndicator(),
@@ -126,52 +141,73 @@ class DeepLinkService {
     );
 
     try {
-      // 3. 모임 참여 API 호출
+      // 4. 참여 전 모임 목록 저장 (참여 전후 비교용)
+      print('📝 [DeepLink] 참여 전 모임 목록 저장');
+      final meetingsBefore = ref.read(meetingProvider).meetings;
+      final meetingIdsBefore = meetingsBefore.map((m) => m.meetingId).toSet();
+      print('  - 참여 전 모임 개수: ${meetingsBefore.length}');
+      print('  - 참여 전 모임 ID 목록: $meetingIdsBefore');
+
+      // 5. 모임 참여 API 호출
+      // joinMeetingFromLink() 내부에서 await loadMeetings()를 호출하여
+      // 참여 후 최신 모임 목록을 자동으로 가져옵니다
       print('🔄 [DeepLink] 모임 참여 시작');
-      final meetingId = await ref
+      await ref
           .read(meetingProvider.notifier)
           .joinMeetingFromLink(inviteToken);
 
-      print('✅ [DeepLink] 모임 참여 성공 - meetingId: $meetingId');
+      print('✅ [DeepLink] 모임 참여 성공');
+
+      // 6. 참여 후 모임 목록에서 새로 추가된 모임 찾기
+      print('🔍 [DeepLink] 새로 추가된 모임 찾기');
+      final meetingsAfter = ref.read(meetingProvider).meetings;
+      print('  - 참여 후 모임 개수: ${meetingsAfter.length}');
 
       // 로딩 닫기
-      if (!context.mounted) return;
-      Navigator.pop(context);
+      if (!navigatorContext.mounted) return;
+      Navigator.of(navigatorContext).pop();
 
-      // 4. 모임 상세 화면으로 이동
-      if (meetingId != null) {
-        // 백엔드가 meetingId를 반환하는 경우: 해당 모임 상세 화면으로 이동
-        print('🔄 [DeepLink] 모임 상세 화면으로 이동: meetingId=$meetingId');
+      // 참여 전에 없던 모임 찾기 (새로 추가된 모임)
+      MeetingBrief? newMeeting;
 
-        // 모임 목록에서 해당 모임 찾기
-        final meetings = ref.read(meetingProvider).meetings;
-        final meeting = meetings.firstWhere(
-          (m) => m.meetingId == meetingId,
-          orElse: () => throw Exception('모임을 찾을 수 없습니다'),
-        );
+      for (var meeting in meetingsAfter) {
+        if (!meetingIdsBefore.contains(meeting.meetingId)) {
+          newMeeting = meeting;
+          print('✅ [DeepLink] 새로 참여한 모임 발견!');
+          print('  - 모임 ID: ${meeting.meetingId}');
+          print('  - 모임 제목: ${meeting.title}');
+          break;
+        }
+      }
 
-        if (!context.mounted) return;
+      // 7. 모임 상세 화면으로 이동
+      if (newMeeting != null) {
+        // 새로 참여한 모임을 찾은 경우: 해당 모임 상세 화면으로 이동
+        final meeting = newMeeting; // 로컬 변수로 non-null 타입 확정
 
-        // 모임 상세 화면으로 네비게이션
-        Navigator.of(context).push(
+        if (!navigatorContext.mounted) return;
+
+        print('🔄 [DeepLink] 모임 상세 화면으로 이동: ${meeting.title}');
+        Navigator.of(navigatorContext).push(
           MaterialPageRoute(
             builder: (context) => MeetingDetailScreen(meeting: meeting),
           ),
         );
 
         // 성공 메시지
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('모임에 참여했습니다!'),
-            duration: Duration(seconds: 2),
+        ScaffoldMessenger.of(navigatorContext).showSnackBar(
+          SnackBar(
+            content: Text('${meeting.title} 모임에 참여했습니다!'),
+            duration: const Duration(seconds: 2),
           ),
         );
       } else {
-        // 백엔드가 meetingId를 반환하지 않는 경우: 홈 화면으로 이동
-        print('⚠️ [DeepLink] meetingId 없음 - 홈 화면으로 이동');
+        // 새로운 모임을 찾지 못한 경우 (이미 참여했거나 예외 상황)
+        print('⚠️ [DeepLink] 새로운 모임을 찾지 못함');
+        print('  - 이미 참여한 모임이거나 목록 새로고침 실패');
 
-        // 성공 메시지
-        ScaffoldMessenger.of(context).showSnackBar(
+        // 성공 메시지 (홈 화면에 머물기)
+        ScaffoldMessenger.of(navigatorContext).showSnackBar(
           const SnackBar(
             content: Text('모임에 참여했습니다!\n홈 화면에서 확인해주세요.'),
             duration: Duration(seconds: 3),
@@ -183,8 +219,8 @@ class DeepLinkService {
       print('❌ [DeepLink] 모임 참여 실패: $e');
 
       // 로딩 닫기
-      if (!context.mounted) return;
-      Navigator.pop(context);
+      if (!navigatorContext.mounted) return;
+      Navigator.of(navigatorContext).pop();
 
       // 에러 메시지 표시
       String errorMessage = '모임 참여에 실패했습니다';
@@ -201,7 +237,7 @@ class DeepLinkService {
         errorMessage = '유효하지 않은 초대 링크입니다';
       }
 
-      _showError(context, errorMessage);
+      _showError(navigatorContext, errorMessage);
     }
   }
 

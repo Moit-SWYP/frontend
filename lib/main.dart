@@ -32,10 +32,14 @@ class MoitApp extends ConsumerStatefulWidget {
 
 class _MoitAppState extends ConsumerState<MoitApp> {
   final _deepLinkService = DeepLinkService();
+  final _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
     super.initState();
+    // NavigatorKey를 DeepLinkService에 전달
+    _deepLinkService.setNavigatorKey(_navigatorKey);
+
     // 딥링크 초기화는 첫 프레임 이후에 실행
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _deepLinkService.init(context, ref);
@@ -53,7 +57,7 @@ class _MoitAppState extends ConsumerState<MoitApp> {
     return MaterialApp.router(
       title: 'Moit',
       theme: AppTheme.lightTheme,
-      routerConfig: AppRouter.router(ref),
+      routerConfig: AppRouter.router(ref, _navigatorKey),
       debugShowCheckedModeBanner: false,
     );
   }

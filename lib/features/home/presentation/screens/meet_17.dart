@@ -790,102 +790,110 @@ class _Meet17ScreenState extends ConsumerState<Meet17Screen> {
 
   /// 만날 수 있는 사람 섹션
   Widget _buildAvailablePeople() {
-    // 하드코딩된 더미 데이터
-    final List<Map<String, String>> people = [
-      {'name': '남수빈', 'icon': 'food_S'},
-      {'name': '양우열', 'icon': 'exhibit_S'},
-      {'name': '김여명', 'icon': 'study_S'},
-    ];
+    // meetingId와 _selectedDate가 없으면 표시하지 않음
+    if (widget.meetingId == null || _selectedDate == null) {
+      return const SizedBox.shrink();
+    }
 
-    return Container(
-      width: double.infinity,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 헤더
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text(
-                '만날 수 있는 사람',
-                style: TextStyle(
-                  color: Color(0xFF111111), // txt-primary
-                  fontSize: 18,
-                  fontFamily: 'Pretendard',
-                  fontWeight: FontWeight.w700,
-                  height: 1.33,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${people.length}',
-                style: const TextStyle(
-                  color: Color(0xFF505050), // txt-secondary
-                  fontSize: 14,
-                  fontFamily: 'Pretendard',
-                  fontWeight: FontWeight.w700,
-                  height: 1.43,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // 사람 목록
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: people.map((person) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: SizedBox(
-                  width: 40,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // SVG 아이콘
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: ShapeDecoration(
-                          color: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          alignment: Alignment.center,
-                          child: SvgPicture.asset(
-                            'assets/icons/${person['icon']}.svg',
-                            width: 32,
-                            height: 32,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // 이름
-                      Text(
-                        person['name']!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF111111), // txt-primary
-                          fontSize: 14,
-                          fontFamily: 'Pretendard',
-                          fontWeight: FontWeight.w400,
-                          height: 1.43,
-                        ),
-                      ),
-                    ],
+    // 선택된 날짜를 YYYY-MM-DD 형식으로 변환
+    final dateStr = '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
+
+    print('📋 [Meet17] 날짜 투표자 조회: $dateStr');
+
+    return FutureBuilder(
+      future: ref.read(voteProvider(widget.meetingId!).notifier).getDateVoters(dateStr),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data == null) {
+          return const SizedBox.shrink();
+        }
+
+        final voters = snapshot.data!.voters;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Text(
+                  '만날 수 있는 사람',
+                  style: TextStyle(
+                    color: Color(0xFF111111), // txt-primary
+                    fontSize: 18,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w700,
+                    height: 1.33,
                   ),
                 ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
+                const SizedBox(width: 8),
+                Text(
+                  '${voters.length}',
+                  style: const TextStyle(
+                    color: Color(0xFF505050), // color-secondary
+                    fontSize: 14,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w700,
+                    height: 1.43,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 9),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: voters.map((voter) {
+                  return Container(
+                    width: 40,
+                    margin: const EdgeInsets.only(right: 8),
+                    child: Column(
+                      children: [
+                        // 캐릭터 아이콘
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: ShapeDecoration(
+                            color: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: SvgPicture.asset(
+                            _getCharacterIconPath(voter.characterType),
+                            width: 32,
+                            height: 32,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // 닉네임
+                        Text(
+                          voter.nickname,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Color(0xFF111111),
+                            fontSize: 14,
+                            fontFamily: 'Pretendard',
+                            fontWeight: FontWeight.w400,
+                            height: 1.43,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

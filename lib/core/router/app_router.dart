@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moit/features/auth/presentation/screens/login_screen.dart';
@@ -14,7 +15,12 @@ import 'package:moit/features/settings/presentation/screens/notification_setting
 
 /// 앱 전체 라우팅 설정
 class AppRouter {
-  static GoRouter router(WidgetRef ref) => GoRouter(
+  static GoRouter router(
+    WidgetRef ref,
+    GlobalKey<NavigatorState> navigatorKey,
+  ) =>
+      GoRouter(
+        navigatorKey: navigatorKey,
         initialLocation: '/login',
         redirect: (context, state) {
           final authState = ref.read(authProvider);
