@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moit/core/constants/app_colors.dart';
+import 'package:moit/features/auth/providers/auth_provider.dart';
 import 'package:moit/features/member/data/models/character_type.dart';
+import 'package:moit/features/member/data/models/member_withdraw_request.dart';
 import 'package:moit/features/member/providers/member_provider.dart';
 
 /// 회원탈퇴 화면
@@ -177,13 +179,75 @@ class _WithdrawAccountScreenState extends ConsumerState<WithdrawAccountScreen> {
     );
 
     if (confirmed == true) {
-      // TODO: 백엔드 API 연동 필요
-      // 엔드포인트: POST /api/members/me/withdraw
-      // 요청 바디: {"reason": selectedReason ?? customReason}
+      if (!mounted) return;
 
-      // 임시: 바로 로그인 화면으로 이동
-      if (mounted) {
+      // 탈퇴 사유 결정 (선택된 사유 또는 직접 입력 내용)
+      final String withdrawReason = isCustomInput ? customReason : selectedReason!;
+
+      // WithdrawType enum으로 매핑
+      WithdrawType withdrawType;
+      String? description;
+
+      if (withdrawReason == '일정 생성이 불편해요') {
+        withdrawType = WithdrawType.SCHEDULE_INCONVENIENT;
+      } else if (withdrawReason == '원하는 기능이 없어요') {
+        withdrawType = WithdrawType.NO_FEATURE;
+      } else if (withdrawReason == '버그가 자주 발생해요') {
+        withdrawType = WithdrawType.BUG;
+      } else {
+        // 기타사항 또는 직접 입력
+        withdrawType = WithdrawType.ETC;
+        description = withdrawReason; // 직접 입력한 내용을 description에 저장
+      }
+
+      // 로딩 다이얼로그 표시
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // 회원 탈퇴 API 호출
+      final success = await ref.read(memberProvider.notifier).withdraw(
+        withdrawType.name,
+        description: description,
+      );
+
+      if (!mounted) return;
+
+      // 로딩 다이얼로그 닫기
+      Navigator.of(context).pop();
+
+      if (success) {
+        // 탈퇴 성공 → 로그아웃 처리 및 로그인 화면으로 이동
+        await ref.read(authProvider.notifier).logout();
+
+        if (!mounted) return;
+
+        // 로그인 화면으로 이동
         context.go('/login');
+
+        // 성공 메시지 표시
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('회원 탈퇴가 완료되었습니다.'),
+            backgroundColor: AppColors.primaryBlue,
+          ),
+        );
+      } else {
+        // 탈퇴 실패 → 백엔드에서 제공한 에러 메시지 표시
+        final memberState = ref.read(memberProvider);
+        final errorMessage = memberState.errorMessage ?? '회원 탈퇴에 실패했습니다. 다시 시도해주세요.';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4), // 에러 메시지는 조금 더 길게 표시
+          ),
+        );
       }
     } else if (confirmed == false) {
       // 다시 생각하기 선택 시 home_profile_my로 이동

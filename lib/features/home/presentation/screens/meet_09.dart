@@ -1131,72 +1131,53 @@ class _Meet09ScreenState extends ConsumerState<Meet09Screen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 헤더 (투표 완료 시 드롭다운 추가)
-        GestureDetector(
-          onTap: (hasVotedTime || isTimeConfirmed)
-              ? () {
-                  setState(() {
-                    _isTimeExpanded = !_isTimeExpanded;
-                  });
-                }
-              : null,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Text(
-                    '만나는 시간',
-                    style: TextStyle(
-                      color: Color(0xFF111111), // txt-primary
-                      fontSize: 18,
-                      fontFamily: 'Pretendard',
-                      fontWeight: FontWeight.w700,
-                      height: 1.33,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: ShapeDecoration(
-                      color: isTimeConfirmed
-                          ? const Color(0xFF0A1D60) // main080 (투표 완료)
-                          : hasVotedTime
-                              ? const Color(0xFFE8EDFE) // main010 (투표 중)
-                              : const Color(0xFFC5C8CE), // grey050 (투표 전)
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      isTimeConfirmed
-                          ? '투표 완료'
-                          : hasVotedTime
-                              ? '투표 중'
-                              : '투표 전',
-                      style: TextStyle(
-                        color: isTimeConfirmed
-                            ? Colors.white
-                            : hasVotedTime
-                                ? const Color(0xFF1A49F1)
-                                : Colors.white,
-                        fontSize: 13,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w500,
-                        height: 1.50,
-                        letterSpacing: -0.33,
-                      ),
-                    ),
-                  ),
-                ],
+        // 헤더
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              '만나는 시간',
+              style: TextStyle(
+                color: Color(0xFF111111), // txt-primary
+                fontSize: 18,
+                fontFamily: 'Pretendard',
+                fontWeight: FontWeight.w700,
+                height: 1.33,
               ),
-              if (hasVotedTime || isTimeConfirmed)
-                Icon(
-                  _isTimeExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                  color: const Color(0xFF111111),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: ShapeDecoration(
+                color: isTimeConfirmed
+                    ? const Color(0xFF0A1D60) // main080 (투표 완료)
+                    : hasVotedTime
+                        ? const Color(0xFFE8EDFE) // main010 (투표 중)
+                        : const Color(0xFFC5C8CE), // grey050 (투표 전)
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-            ],
-          ),
+              ),
+              child: Text(
+                isTimeConfirmed
+                    ? '투표 완료'
+                    : hasVotedTime
+                        ? '투표 중'
+                        : '투표 전',
+                style: TextStyle(
+                  color: isTimeConfirmed
+                      ? Colors.white
+                      : hasVotedTime
+                          ? const Color(0xFF1A49F1)
+                          : Colors.white,
+                  fontSize: 13,
+                  fontFamily: 'Pretendard',
+                  fontWeight: FontWeight.w500,
+                  height: 1.50,
+                  letterSpacing: -0.33,
+                ),
+              ),
+            ),
+          ],
         ),
 
         const SizedBox(height: 16),

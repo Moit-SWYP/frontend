@@ -37,5 +37,5 @@ const _$CharacterTypeEnumMap = {
   CharacterType.TRAVELER: 'TRAVELER',
   CharacterType.ACTIVE: 'ACTIVE',
   CharacterType.TREND_SETTER: 'TREND_SETTER',
-  CharacterType.STUDYER: 'STUDYER',
+  CharacterType.STUDYER: 'STUDIER',
 };

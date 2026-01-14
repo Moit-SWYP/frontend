@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "321776728573",
+    "project_id": "moit-5f304",
+    "storage_bucket": "moit-5f304.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:321776728573:android:85c563efd5ea40bbda8194",
+        "android_client_info": {
+          "package_name": "com.moitswyp.moit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDzyT6XC1TfqopcXUXRs70SvZ47Jqq4mx0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

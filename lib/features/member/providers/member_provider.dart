@@ -212,8 +212,21 @@ class MemberNotifier extends StateNotifier<MemberState> {
       print('❌ [Member] 회원 탈퇴 실패: $e');
       print('❌ [Member] StackTrace: $stackTrace');
 
+      // 백엔드에서 제공한 에러 메시지 파싱
+      String errorMessage = '회원 탈퇴에 실패했습니다.';
+
+      if (e is DioException && e.response?.data != null) {
+        final responseData = e.response!.data;
+
+        // 백엔드 응답 형식: {"code": "MEET0009", "message": "..."}
+        if (responseData is Map<String, dynamic> && responseData['message'] != null) {
+          errorMessage = responseData['message'];
+          print('🔍 [Member] 백엔드 에러 메시지: $errorMessage');
+        }
+      }
+
       state = state.copyWith(
-        errorMessage: '회원 탈퇴에 실패했습니다.',
+        errorMessage: errorMessage,
       );
 
       return false;

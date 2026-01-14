@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moit/core/storage/token_storage.dart';
+import 'package:moit/core/services/firebase_analytics_service.dart';
 import 'package:moit/features/auth/data/models/auth_tokens.dart';
 import 'package:moit/features/auth/data/models/signup_request.dart';
 import 'package:moit/features/auth/providers/auth_state.dart';
@@ -214,6 +215,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         tokens: authResponse.tokens,
         kakaoUser: null,
       );
+
+      // 📊 Firebase Analytics - 회원가입 완료 이벤트 로깅
+      await FirebaseAnalyticsService.logSignupComplete();
 
       // 🔄 회원가입 성공 → 프로필 자동 로드
       print('🔄 [Auth] 회원가입 성공 → 프로필 자동 로드');

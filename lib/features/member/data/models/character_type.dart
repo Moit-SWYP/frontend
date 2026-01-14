@@ -1,3 +1,5 @@
+import 'package:json_annotation/json_annotation.dart';
+
 /// 회원 캐릭터 타입
 ///
 /// 8가지 캐릭터 유형
@@ -9,6 +11,7 @@ enum CharacterType {
   TRAVELER, // 모험가
   ACTIVE, // 활동가
   TREND_SETTER, // 주도가
+  @JsonValue('STUDIER') // 백엔드와의 호환성을 위해 STUDIER로 매핑
   STUDYER, // 독습가
 }
 
