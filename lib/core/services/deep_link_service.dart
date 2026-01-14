@@ -3,8 +3,8 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moit/features/meeting/providers/meeting_provider.dart';
-import 'package:moit/features/meeting/presentation/screens/meeting_detail_screen.dart';
 import 'package:moit/features/meeting/data/models/meeting_brief.dart';
+import 'package:moit/features/home/presentation/screens/meet_07.dart';
 
 /// 딥링크 서비스
 ///
@@ -187,10 +187,14 @@ class DeepLinkService {
 
         if (!navigatorContext.mounted) return;
 
-        print('🔄 [DeepLink] 모임 상세 화면으로 이동: ${meeting.title}');
+        print('🔄 [DeepLink] Meet07 화면으로 이동 (날짜 투표): ${meeting.title}');
         Navigator.of(navigatorContext).push(
           MaterialPageRoute(
-            builder: (context) => MeetingDetailScreen(meeting: meeting),
+            builder: (context) => Meet07Screen(
+              meetingName: meeting.title,
+              meetingId: meeting.meetingId,
+              initialTab: 1,  // 일정 탭으로 시작
+            ),
           ),
         );
 

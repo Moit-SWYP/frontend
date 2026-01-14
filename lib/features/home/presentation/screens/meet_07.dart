@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:moit/core/utils/share_link_utils.dart';
 import 'package:moit/features/home/presentation/screens/meet_09.dart';
+import 'package:moit/features/home/presentation/screens/meet_17.dart';
 import 'package:moit/features/meeting/providers/meeting_provider.dart';
 import 'package:moit/features/meeting/providers/vote_provider.dart';
 
@@ -413,22 +414,40 @@ class _Meet07ScreenState extends ConsumerState<Meet07Screen> {
 
                     // 결과 처리
                     if (voteSuccess) {
-                      print('✅ [Meet07] 날짜 투표 성공 → meet_09 이동');
+                      // isHost 확인
+                      final voteState = ref.read(voteProvider(widget.meetingId!));
+                      final isHost = voteState.isHost;
+
+                      print('✅ [Meet07] 날짜 투표 성공 (isHost: $isHost)');
 
                       // 바텀시트 닫기
                       Navigator.pop(context);
 
-                      // meet_09로 이동
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => Meet09Screen(
-                            meetingName: widget.meetingName,
-                            meetingId: widget.meetingId,
-                            votedDates: _selectedDates,
+                      if (isHost) {
+                        // HOST → Meet09 (확정하기 버튼 있음)
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => Meet09Screen(
+                              meetingName: widget.meetingName,
+                              meetingId: widget.meetingId,
+                              votedDates: _selectedDates,
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                      } else {
+                        // MEMBER → Meet17 (확정하기 버튼 없음)
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => Meet17Screen(
+                              meetingName: widget.meetingName,
+                              meetingId: widget.meetingId,
+                              votedDates: _selectedDates,
+                            ),
+                          ),
+                        );
+                      }
                     } else {
                       print('❌ [Meet07] 날짜 투표 실패');
 
