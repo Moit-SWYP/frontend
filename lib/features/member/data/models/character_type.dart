@@ -62,6 +62,11 @@ extension CharacterTypeExtension on CharacterType {
 
   /// 문자열을 Enum으로 변환
   static CharacterType fromJson(String json) {
+    // 백엔드 호환성: STUDIER → STUDYER 변환
+    if (json == 'STUDIER') {
+      return CharacterType.STUDYER;
+    }
+
     return CharacterType.values.firstWhere(
       (e) => e.name == json,
       orElse: () => CharacterType.FOODIE,

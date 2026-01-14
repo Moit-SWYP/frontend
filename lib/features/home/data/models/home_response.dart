@@ -15,6 +15,7 @@ enum MeetingParticipantRole {
 class ParticipantInfo {
   final int memberId;
   final String nickname;
+  @JsonKey(fromJson: CharacterTypeExtension.fromJson, toJson: _characterTypeToJson)
   final CharacterType characterType;
   final MeetingParticipantRole meetingParticipantRole;
 
@@ -29,6 +30,9 @@ class ParticipantInfo {
       _$ParticipantInfoFromJson(json);
 
   Map<String, dynamic> toJson() => _$ParticipantInfoToJson(this);
+
+  /// CharacterType을 JSON으로 변환
+  static String _characterTypeToJson(CharacterType type) => type.toJson();
 
   /// 역할 텍스트
   String get roleText {

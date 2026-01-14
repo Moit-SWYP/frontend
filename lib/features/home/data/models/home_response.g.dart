@@ -10,7 +10,8 @@ ParticipantInfo _$ParticipantInfoFromJson(Map<String, dynamic> json) =>
     ParticipantInfo(
       memberId: (json['memberId'] as num).toInt(),
       nickname: json['nickname'] as String,
-      characterType: $enumDecode(_$CharacterTypeEnumMap, json['characterType']),
+      characterType:
+          CharacterTypeExtension.fromJson(json['characterType'] as String),
       meetingParticipantRole: $enumDecode(
           _$MeetingParticipantRoleEnumMap, json['meetingParticipantRole']),
     );
@@ -19,21 +20,11 @@ Map<String, dynamic> _$ParticipantInfoToJson(ParticipantInfo instance) =>
     <String, dynamic>{
       'memberId': instance.memberId,
       'nickname': instance.nickname,
-      'characterType': _$CharacterTypeEnumMap[instance.characterType]!,
+      'characterType':
+          ParticipantInfo._characterTypeToJson(instance.characterType),
       'meetingParticipantRole':
           _$MeetingParticipantRoleEnumMap[instance.meetingParticipantRole]!,
     };
-
-const _$CharacterTypeEnumMap = {
-  CharacterType.FOODIE: 'FOODIE',
-  CharacterType.DRINKER: 'DRINKER',
-  CharacterType.HEALER: 'HEALER',
-  CharacterType.CULTURE_LOVER: 'CULTURE_LOVER',
-  CharacterType.TRAVELER: 'TRAVELER',
-  CharacterType.ACTIVE: 'ACTIVE',
-  CharacterType.TREND_SETTER: 'TREND_SETTER',
-  CharacterType.STUDYER: 'STUDYER',
-};
 
 const _$MeetingParticipantRoleEnumMap = {
   MeetingParticipantRole.host: 'HOST',
