@@ -10,6 +10,7 @@ MeetingCreateRequest _$MeetingCreateRequestFromJson(
         Map<String, dynamic> json) =>
     MeetingCreateRequest(
       title: json['title'] as String,
+      type: json['type'] as String? ?? 'FOODIE',
       date: json['date'] as String?,
       dateVoteDeadline: json['dateVoteDeadline'] == null
           ? null
@@ -23,6 +24,7 @@ Map<String, dynamic> _$MeetingCreateRequestToJson(
         MeetingCreateRequest instance) =>
     <String, dynamic>{
       'title': instance.title,
+      'type': instance.type,
       'date': instance.date,
       'dateVoteDeadline': instance.dateVoteDeadline?.toIso8601String(),
       'courseVoteDeadline': instance.courseVoteDeadline?.toIso8601String(),
