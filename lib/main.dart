@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'package:moit/core/router/app_router.dart';
 import 'package:moit/core/theme/app_theme.dart';
 import 'package:moit/core/services/kakao_login_service.dart';
@@ -11,8 +12,10 @@ void main() async {
   // Flutter 바인딩 초기화
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase 초기화
-  await Firebase.initializeApp();
+  // Firebase 초기화 (플랫폼별 설정 포함)
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   // 한국어 로케일 초기화 (날짜 포맷팅용)
   await initializeDateFormatting('ko', null);

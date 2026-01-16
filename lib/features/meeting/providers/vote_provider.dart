@@ -240,6 +240,10 @@ class VoteNotifier extends StateNotifier<VoteState> {
       await _voteClient.confirmDateManual(meetingId, date);
       print('✅ [Vote] 날짜 수동 확정 성공');
 
+      // ✨ 중요: loadVoteSummary 호출 전 isLoading 해제
+      print('  - isLoading을 false로 설정 (loadVoteSummary 호출 전)');
+      state = state.copyWith(isLoading: false);
+
       // 확정 후 요약 다시 로드
       await loadVoteSummary();
 
@@ -271,6 +275,10 @@ class VoteNotifier extends StateNotifier<VoteState> {
     try {
       await _voteClient.confirmTime(meetingId);
       print('✅ [Vote] 시간 확정 성공');
+
+      // ✨ 중요: loadVoteSummary 호출 전 isLoading 해제
+      print('  - isLoading을 false로 설정 (loadVoteSummary 호출 전)');
+      state = state.copyWith(isLoading: false);
 
       // 확정 후 요약 다시 로드
       await loadVoteSummary();
@@ -316,6 +324,10 @@ class VoteNotifier extends StateNotifier<VoteState> {
     try {
       await _voteClient.confirmTimeManual(meetingId, time);
       print('✅ [Vote] 시간 수동 확정 성공');
+
+      // ✨ 중요: loadVoteSummary 호출 전 isLoading 해제
+      print('  - isLoading을 false로 설정 (loadVoteSummary 호출 전)');
+      state = state.copyWith(isLoading: false);
 
       // 확정 후 요약 다시 로드
       await loadVoteSummary();
